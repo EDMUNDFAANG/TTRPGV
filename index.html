@@ -3,30 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Animus Corridor Simulation</title>
-  <!-- Three.js from CDN -->
+  <title>Animus Corridor Simulation - Enhanced</title>
+  <!-- Include Three.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
-    /* ===== Reset & Body ===== */
+    /* Reset & Base Styles */
     html, body {
       margin: 0; 
       padding: 0;
       overflow: hidden;
-      font-family: "Arial", sans-serif;
-      background: #0d1b2a; /* fallback in case WebGL doesn't load */
+      background: #0d1b2a;
+      font-family: Arial, sans-serif;
     }
-
-    /* ===== Canvas ===== */
     canvas {
       display: block;
     }
-
-    /* ===== Navigation Bar ===== */
+    /* Navigation Bar */
     nav {
       position: fixed;
       top: 0;
       width: 100%;
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(0,0,0,0.4);
       padding: 10px;
       display: flex;
       justify-content: center;
@@ -51,8 +48,7 @@
       color: #000;
       transform: scale(1.05);
     }
-
-    /* ===== Centered Content Card ===== */
+    /* Centered Content Card */
     .content-card {
       position: fixed;
       top: 50%;
@@ -63,16 +59,11 @@
       padding: 30px;
       color: #fff;
       text-align: center;
-
-      /* Subtle neon border */
-      border: 2px solid rgba(0, 204, 255, 0.3);
+      border: 2px solid rgba(0,204,255,0.3);
       border-radius: 20px;
-      box-shadow: 0 0 20px rgba(0, 204, 255, 0.2);
-
-      /* Frosted glass effect (where supported) */
-      background: rgba(0, 0, 0, 0.3);
+      box-shadow: 0 0 20px rgba(0,204,255,0.2);
+      background: rgba(0,0,0,0.3);
       backdrop-filter: blur(8px);
-      
       z-index: 10;
     }
     .content-card h1 {
@@ -84,15 +75,14 @@
       font-size: 1.1em;
       line-height: 1.6em;
     }
-    /* Hide all except "Inventory" by default, or you can adapt to your needs */
+    /* Only display Inventory by default */
     #map, #email, #codex, #scanner {
       display: none;
     }
-
   </style>
 </head>
 <body>
-  <!-- ===== Navigation ===== -->
+  <!-- Navigation -->
   <nav>
     <button data-section="inventory" class="active">Inventory</button>
     <button data-section="map">Map</button>
@@ -100,8 +90,7 @@
     <button data-section="codex">Codex</button>
     <button data-section="scanner">Scanner</button>
   </nav>
-
-  <!-- ===== Content Cards ===== -->
+  <!-- Content Cards -->
   <div id="inventory" class="content-card">
     <h1>Inventory</h1>
     <p>Inventory details go here.</p>
@@ -123,34 +112,29 @@
     <p>Scanner details go here.</p>
   </div>
 
-  <!-- ===== Three.js Scene ===== -->
+  <!-- Three.js Scene -->
   <script>
     let scene, camera, renderer;
-    let corridor;
+    let corridor, techShapes;
     let glyphs = [];
     let mouse = new THREE.Vector2(0, 0);
     let targetRotationX = 0, targetRotationY = 0;
-
+    
     // For glyph interaction
-    const raycaster = new THREE.Raycaster();
-
+    const repulsionDistance = 100;
+    const repulsionForce = 0.5;
+    
     init();
     animate();
 
     function init() {
-      // Scene & Fog
+      // Create Scene with deep blue background and heavy fog
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0d1b2a);
-      // Increase density for heavier fog
       scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0012);
 
       // Camera
-      camera = new THREE.PerspectiveCamera(
-        75,
-        window.innerWidth / window.innerHeight,
-        1,
-        5000
-      );
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 5000);
       camera.position.set(0, 0, 800);
 
       // Renderer
@@ -161,17 +145,14 @@
       // Lights
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
       scene.add(ambientLight);
-
       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
       directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
 
-      // Corridor (open-ended)
+      // Corridor: Build an open-ended corridor (floor, ceiling, left/right walls)
       corridor = new THREE.Group();
       const size = 4000;
       const half = size / 2;
-
-      // Corridor material: neon grid
       const gridTexture = createGridTexture();
       const corridorMat = new THREE.MeshPhongMaterial({
         map: gridTexture,
@@ -181,103 +162,88 @@
       });
 
       // Floor
-      const floor = new THREE.Mesh(
-        new THREE.PlaneGeometry(size, size),
-        corridorMat
-      );
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(size, size), corridorMat);
       floor.rotation.x = -Math.PI / 2;
       floor.position.y = -half;
       corridor.add(floor);
-
       // Ceiling
-      const ceiling = new THREE.Mesh(
-        new THREE.PlaneGeometry(size, size),
-        corridorMat
-      );
+      const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(size, size), corridorMat);
       ceiling.rotation.x = Math.PI / 2;
       ceiling.position.y = half;
       corridor.add(ceiling);
-
       // Left Wall
-      const leftWall = new THREE.Mesh(
-        new THREE.PlaneGeometry(size, size),
-        corridorMat
-      );
+      const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), corridorMat);
       leftWall.rotation.y = Math.PI / 2;
       leftWall.position.x = -half;
       corridor.add(leftWall);
-
       // Right Wall
-      const rightWall = new THREE.Mesh(
-        new THREE.PlaneGeometry(size, size),
-        corridorMat
-      );
+      const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), corridorMat);
       rightWall.rotation.y = -Math.PI / 2;
       rightWall.position.x = half;
       corridor.add(rightWall);
-
-      // (No Back Wall) => extends into fog
+      // (No back wall so the corridor recedes into the fog)
       scene.add(corridor);
 
-      // Floating glyphs
+      // Tech Shapes: Floating techy snippets that appear and fade away
+      techShapes = new THREE.Group();
+      scene.add(techShapes);
+      for (let i = 0; i < 10; i++) {
+        let techShape = createTechShape();
+        resetTechShape(techShape);
+        techShapes.add(techShape);
+      }
+
+      // Glyphs: Create 30 glyph sprites with lifecycle and interactivity
       const glyphLetters = ["Λ", "Δ", "Ω", "ψ", "Σ", "Φ", "Ξ", "Π"];
-      for (let i = 0; i < 25; i++) {
-        const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
-        const sprite = createGlyphSprite(letter);
-        // random position in the corridor
+      for (let i = 0; i < 30; i++) {
+        let letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
+        let sprite = createGlyphSprite(letter);
         sprite.position.set(
           (Math.random() - 0.5) * size * 0.6,
           (Math.random() - 0.5) * size * 0.6,
           -Math.random() * size * 0.5
         );
+        // Set custom properties for interactivity and lifecycle
         sprite.userData = {
           basePosition: sprite.position.clone(),
-          speed: Math.random() * 0.5 + 0.5,
-          baseScale: sprite.scale.clone()
+          oscillationSpeed: Math.random() * 0.5 + 0.5,
+          velocity: new THREE.Vector3(0, 0, 0),
+          lifetime: Math.random() * 5,
+          maxLifetime: 5 + Math.random() * 5  // glyph lasts between 5 and 10 seconds
         };
-        scene.add(sprite);
         glyphs.push(sprite);
+        scene.add(sprite);
       }
 
-      // Listeners
+      // Listeners for window resize and mouse movement
       window.addEventListener("resize", onWindowResize, false);
       document.addEventListener("mousemove", onDocumentMouseMove, false);
 
-      // Nav button toggles
+      // Navigation button events for UI overlay
       const navButtons = document.querySelectorAll("nav button");
-      const sections = ["inventory","map","email","codex","scanner"];
+      const sections = ["inventory", "map", "email", "codex", "scanner"];
       navButtons.forEach(btn => {
         btn.addEventListener("click", () => {
           const sectionId = btn.getAttribute("data-section");
-          // Toggle content
           sections.forEach(s => {
             const el = document.getElementById(s);
-            if(s === sectionId) {
-              el.style.display = "block";
-            } else {
-              el.style.display = "none";
-            }
+            el.style.display = (s === sectionId) ? "block" : "none";
           });
-          // Toggle active button
           navButtons.forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
         });
       });
     }
 
-    /* Create the neon grid texture for the corridor walls/floor/ceiling */
+    // Create a neon grid texture for the corridor walls/floor/ceiling
     function createGridTexture() {
       const size = 512;
       const canvas = document.createElement("canvas");
       canvas.width = size;
       canvas.height = size;
       const ctx = canvas.getContext("2d");
-
-      // Fill background
       ctx.fillStyle = "#0d1b2a";
       ctx.fillRect(0, 0, size, size);
-
-      // Neon lines
       ctx.strokeStyle = "rgba(0,204,255,0.4)";
       ctx.lineWidth = 1;
       const spacing = 50;
@@ -295,85 +261,152 @@
       }
       const texture = new THREE.CanvasTexture(canvas);
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      // Repeating to make the grid denser
       texture.repeat.set(10, 10);
       return texture;
     }
 
-    /* Create a floating glyph (sprite) */
+    // Create a glyph sprite with a given letter
     function createGlyphSprite(letter) {
       const canvas = document.createElement("canvas");
       canvas.width = 128;
       canvas.height = 128;
       const ctx = canvas.getContext("2d");
-
-      // Clear & set text style
       ctx.clearRect(0, 0, 128, 128);
       ctx.font = "100px Arial";
       ctx.fillStyle = "rgba(0,204,255,0.8)";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(letter, 64, 64);
-
       const texture = new THREE.CanvasTexture(canvas);
-      const spriteMaterial = new THREE.SpriteMaterial({
-        map: texture,
-        transparent: true,
-        depthTest: false
-      });
-      const sprite = new THREE.Sprite(spriteMaterial);
+      const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(material);
       sprite.scale.set(120, 120, 1);
       return sprite;
     }
 
-    /* Handle window resizing */
+    // Create a tech shape: a crooked line with a circle at its tip
+    function createTechShape() {
+      const group = new THREE.Group();
+      // Create a crooked line
+      const points = [];
+      points.push(new THREE.Vector3(0, 0, 0));
+      points.push(new THREE.Vector3(Math.random() * 100 - 50, Math.random() * 100 - 50, 0));
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.7 });
+      const line = new THREE.Line(geometry, lineMaterial);
+      group.add(line);
+      // Add a circle (small sphere) at the tip
+      const sphereGeo = new THREE.SphereGeometry(5, 16, 16);
+      const sphereMat = new THREE.MeshBasicMaterial({ color: 0x00ccff });
+      const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+      sphere.position.copy(points[1]);
+      group.add(sphere);
+      // Set a lifetime for the tech shape
+      group.userData = {
+        lifetime: 0,
+        maxLifetime: 3 + Math.random() * 3  // between 3 and 6 seconds
+      };
+      return group;
+    }
+
+    // Reset tech shape properties when its lifetime expires
+    function resetTechShape(techShape) {
+      const size = 4000;
+      techShape.position.set(
+        (Math.random() - 0.5) * size * 0.6,
+        (Math.random() - 0.5) * size * 0.6,
+        -Math.random() * size * 0.5
+      );
+      techShape.userData.lifetime = 0;
+      techShape.userData.maxLifetime = 3 + Math.random() * 3;
+      techShape.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      techShape.traverse(child => {
+        if (child.material) {
+          child.material.opacity = 0.7;
+        }
+      });
+    }
+
+    // Handle window resize events
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    /* Track mouse movement for corridor rotation + glyph hover effect */
+    // Update mouse coordinates and set target rotations
     function onDocumentMouseMove(event) {
-      // Normalize mouse coordinates to [-1,1]
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-      // Corridor rotation
-      const maxRotation = 0.1; // in radians
+      const maxRotation = 0.1;
       targetRotationY = mouse.x * maxRotation;
       targetRotationX = mouse.y * maxRotation;
     }
 
-    /* Animate the scene */
+    // Animation loop
     function animate() {
       requestAnimationFrame(animate);
 
-      // Smooth corridor rotation
+      // Smoothly update corridor rotation based on mouse movement
       corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
 
-      // Update glyph positions & mild "hover" effect
+      // Update glyphs with oscillation, repulsion, and lifecycle recycling
       glyphs.forEach(sprite => {
-        // Floating (oscillation)
-        const t = Date.now() * 0.001 * sprite.userData.speed;
+        // Increase lifetime and reset if expired
+        sprite.userData.lifetime += 0.016;
+        if (sprite.userData.lifetime > sprite.userData.maxLifetime) {
+          const size = 4000;
+          sprite.position.set(
+            (Math.random() - 0.5) * size * 0.6,
+            (Math.random() - 0.5) * size * 0.6,
+            -Math.random() * size * 0.5
+          );
+          sprite.userData.basePosition.copy(sprite.position);
+          sprite.userData.lifetime = 0;
+          sprite.userData.maxLifetime = 5 + Math.random() * 5;
+          sprite.material.opacity = 0.8;
+          sprite.userData.velocity.set(0, 0, 0);
+        }
+        // Oscillate around the base position
+        let t = Date.now() * 0.001 * sprite.userData.oscillationSpeed;
         sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 10;
         sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 10;
-
-        // Project glyph position to screen space
-        const pos = sprite.position.clone();
+        // Project to screen space for interaction with mouse
+        let pos = sprite.position.clone();
         pos.project(camera);
-        // Convert to pixel coordinates
-        const glyphX = (pos.x * 0.5 + 0.5) * window.innerWidth;
-        const glyphY = (pos.y * -0.5 + 0.5) * window.innerHeight;
+        let glyphX = (pos.x * 0.5 + 0.5) * window.innerWidth;
+        let glyphY = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+        let mouseX = (mouse.x + 1) * 0.5 * window.innerWidth;
+        let mouseY = (-mouse.y + 1) * 0.5 * window.innerHeight;
+        let dist = Math.hypot(glyphX - mouseX, glyphY - mouseY);
+        // If mouse is close, apply repulsion force
+        if (dist < repulsionDistance) {
+          let dx = glyphX - mouseX;
+          let dy = glyphY - mouseY;
+          let angle = Math.atan2(dy, dx);
+          let repulseX = Math.cos(angle) * repulsionForce;
+          let repulseY = Math.sin(angle) * repulsionForce;
+          sprite.userData.velocity.x += repulseX;
+          sprite.userData.velocity.y += repulseY;
+        }
+        // Dampen velocity and update position
+        sprite.userData.velocity.multiplyScalar(0.95);
+        sprite.position.add(sprite.userData.velocity);
+      });
 
-        // Distance from mouse
-        const dist = Math.hypot(glyphX - ( (mouse.x+1)*0.5*window.innerWidth ), glyphY - ( (-mouse.y+1)*0.5*window.innerHeight ));
-        // If cursor is within ~100px, scale up a bit
-        if (dist < 100) {
-          sprite.scale.lerp(new THREE.Vector3(150,150,1), 0.2);
+      // Update tech shapes: increase lifetime, fade out, then reset
+      techShapes.children.forEach(shape => {
+        shape.userData.lifetime += 0.016;
+        if (shape.userData.lifetime > shape.userData.maxLifetime) {
+          resetTechShape(shape);
         } else {
-          sprite.scale.lerp(sprite.userData.baseScale, 0.2);
+          let fade = 1 - (shape.userData.lifetime / shape.userData.maxLifetime);
+          shape.traverse(child => {
+            if (child.material) {
+              child.material.opacity = fade * 0.7;
+            }
+          });
         }
       });
 
