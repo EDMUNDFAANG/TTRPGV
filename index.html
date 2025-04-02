@@ -168,6 +168,12 @@
       backWall.position.z = -half;
       corridor.add(backWall);
 
+      const geometry = new THREE.BoxGeometry(200, 200, 200);
+      const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const cube = new THREE.Mesh(geometry, material);
+      scene.add(cube);
+
+
       scene.add(corridor);
 
       // Create multiple floating glyphs that gently oscillate
