@@ -3,165 +3,141 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Futuristic Player Stats</title>
-
-  <!-- Futuristic Font (Orbitron) -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap"
-    rel="stylesheet"
-  />
-
+  <title>Futuristic Holographic Room</title>
+  <!-- Import a futuristic font (Orbitron) -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* BASIC RESET */
+    /* === Basic Reset & Body Styling === */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
-
-    /* BODY STYLES */
     body {
       font-family: 'Orbitron', sans-serif;
+      overflow: hidden;
+      background: #b3e5fc; /* A light, holographic blue */
       color: #fff;
-      overflow: hidden; /* Hide scrollbars if the 3D grid extends beyond the window */
       position: relative;
-      background: #000; /* Dark base to contrast the grid lines */
     }
-
-    /* SCENE WRAPPER: holds the 3D perspective */
-    .scene {
+    
+    /* === 3D Room Container (Background Scene) === */
+    .room-container {
       position: absolute;
-      top: 0;
-      left: 0;
       width: 100%;
       height: 100%;
-      /* The higher the perspective value, the weaker the 3D effect; tweak as needed */
-      perspective: 900px;
+      perspective: 1200px;
       perspective-origin: 50% 50%;
-      z-index: 0; /* Behind everything else */
-      overflow: hidden;
+      z-index: 0;
     }
-
-    /* 3D GRID PLANE */
-    .grid {
-      /* Start from the center of the scene */
+    /* The "room" that holds the 3D faces */
+    .room {
       position: absolute;
       top: 50%;
       left: 50%;
       width: 2000px;
       height: 2000px;
-
-      /* We want child transforms to remain in 3D space */
       transform-style: preserve-3d;
-
-      /*
-        Move the grid so that its center is pinned at the scene center.
-        We'll rotate it via JavaScript for the "shifting" effect.
-      */
-      transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg);
-
-      /*
-        The background is a combination of repeating gradients to form a grid.
-        You can tweak the line spacing, color, or add more layers.
-      */
-      background:
-        /* Horizontal lines */
-        repeating-linear-gradient(
-          transparent,
-          transparent 48px,
-          rgba(0, 255, 255, 0.2) 49px,
-          rgba(0, 255, 255, 0.2) 50px
-        ),
-        /* Vertical lines (rotated 90 deg) */
-        repeating-linear-gradient(
-          90deg,
-          transparent,
-          transparent 48px,
-          rgba(0, 255, 255, 0.2) 49px,
-          rgba(0, 255, 255, 0.2) 50px
-        ),
-        /* Subtle radial glow to emulate an ethereal vibe */
-        radial-gradient(
-          circle at center,
-          rgba(0, 255, 255, 0.1),
-          transparent 70%
-        );
-
-      background-blend-mode: screen;
-      background-size: cover;
+      /* The initial translate centers the room and rotateY(180deg) flips the faces so the interior is visible */
+      transform: translate(-50%, -50%) rotateY(180deg);
+      transition: transform 0.1s linear;
     }
-
-    /* FLOATING SYMBOLS (OPTIONAL, FOR EXTRA FLAIR) */
+    
+    /* === Room Faces: Each face has a grid background === */
+    .face {
+      position: absolute;
+      width: 2000px;
+      height: 2000px;
+      backface-visibility: visible;
+      /* Holographic grid: two linear gradients create horizontal & vertical lines */
+      background-color: rgba(255, 255, 255, 0.05);
+      background-image: 
+        linear-gradient(90deg, transparent 48px, rgba(0,150,255,0.4) 49px, transparent 50px),
+        linear-gradient(0deg, transparent 48px, rgba(0,150,255,0.4) 49px, transparent 50px);
+      background-size: 50px 50px;
+      /* A subtle inner glow */
+      box-shadow: inset 0 0 20px rgba(0,150,255,0.2);
+    }
+    /* For a cube of size 2000px (half = 1000px), place each face accordingly.
+       Note: Using the standard cube formulas but leaving the front open so you “enter” the room. */
+    .floor { 
+      /* Floor (bottom): move down 1000px and rotate so its face is upward */
+      transform: translateY(1000px) rotateX(-90deg); 
+    }
+    .ceiling { 
+      /* Ceiling (top): move up 1000px and rotate so its face is downward */
+      transform: translateY(-1000px) rotateX(90deg); 
+    }
+    .left { 
+      /* Left wall: move left 1000px and rotate so its face is rightward (interior) */
+      transform: translateX(-1000px) rotateY(-90deg); 
+    }
+    .right { 
+      /* Right wall: move right 1000px and rotate so its face is leftward (interior) */
+      transform: translateX(1000px) rotateY(90deg); 
+    }
+    .back { 
+      /* Back wall: move backward 1000px and flip it so the interior is visible */
+      transform: translateZ(-1000px) rotateY(180deg); 
+    }
+    
+    /* === Floating Symbols Inside the Room === */
     .floating-symbols {
       position: absolute;
-      top: 0;
-      left: 0;
       width: 100%;
       height: 100%;
       pointer-events: none;
-      z-index: 1; /* Above the grid, below the content */
-      overflow: hidden;
+      /* Place these symbols above the faces but inside the room */
+      z-index: 2;
     }
     .symbol {
       position: absolute;
-      color: rgba(255, 255, 255, 0.2);
-      font-size: 2rem;
-      animation: float 12s linear infinite;
+      color: rgba(0,150,255,0.7);
+      font-size: 48px;
+      /* A gentle drift animation */
+      animation: drift 6s ease-in-out infinite;
     }
-    @keyframes float {
-      0% {
-        transform: translateY(110vh);
-        opacity: 0;
-      }
-      10% {
-        opacity: 1;
-      }
-      100% {
-        transform: translateY(-10vh);
-        opacity: 0;
-      }
+    @keyframes drift {
+      0%   { transform: translate(0, 0); }
+      50%  { transform: translate(20px, -20px); }
+      100% { transform: translate(0, 0); }
     }
-
-    /* NAVIGATION BAR */
+    
+    /* === Navigation & Content Overlays (Stay on top) === */
     nav {
-      display: flex;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.4);
-      padding: 10px;
       position: fixed;
       top: 0;
       width: 100%;
-      z-index: 1002;
-      box-shadow: 0 0 10px #0ff;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      z-index: 100;
+      box-shadow: 0 0 10px rgba(0,150,255,0.5);
     }
     nav button {
-      background: rgba(0, 255, 255, 0.1);
-      border: 1px solid #0ff;
-      color: #0ff;
+      background: transparent;
+      border: 2px solid rgba(0,150,255,0.7);
+      color: rgba(0,150,255,0.7);
       margin: 0 10px;
       padding: 10px 20px;
       cursor: pointer;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      box-shadow: 0 0 10px #0ff, inset 0 0 10px #0ff;
       transition: background 0.3s, color 0.3s, box-shadow 0.3s;
-      font-family: 'Orbitron', sans-serif;
     }
     nav button:hover,
     nav button.active {
-      background: rgba(0, 255, 255, 0.3);
+      background: rgba(0,150,255,0.7);
       color: #fff;
-      box-shadow: 0 0 15px #0ff, inset 0 0 15px #0ff;
+      box-shadow: 0 0 15px rgba(0,150,255,0.7);
     }
-
-    /* CONTENT SECTIONS */
     .content-section {
-      display: none;
+      position: relative;
+      z-index: 101;
       padding: 100px 20px 20px 20px;
       min-height: 100vh;
+      background: transparent;
       transition: opacity 0.5s ease, transform 0.5s ease;
-      position: relative;
-      z-index: 2;
     }
     .active-section {
       display: block;
@@ -172,56 +148,30 @@
       opacity: 0;
       transform: translateX(-20px);
     }
-    .neon-border {
-      border: 2px solid #0ff;
-      box-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0ff;
-      padding: 20px;
-      margin: 10px 0;
-    }
-    /* MAP CONTAINER */
-    #map-container {
-      width: 100%;
-      height: 400px;
-      background-color: #222;
-      border: 2px dashed #0ff;
-      position: relative;
-      overflow: hidden;
-    }
-    #map-container img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      cursor: zoom-in;
-    }
   </style>
 </head>
 <body>
-
-  <!-- 3D SCENE (Grid that shifts with cursor) -->
-  <div class="scene">
-    <div class="grid" id="animusGrid"></div>
+  <!-- === 3D Room Background === -->
+  <div class="room-container">
+    <div class="room" id="room">
+      <!-- Cube Faces (Open front so you “enter” the room) -->
+      <div class="face floor"></div>
+      <div class="face ceiling"></div>
+      <div class="face left"></div>
+      <div class="face right"></div>
+      <div class="face back"></div>
+      <!-- Floating Symbols (These drift gently within the room) -->
+      <div class="floating-symbols">
+        <span class="symbol" style="left: 30%; top: 40%;">Λ</span>
+        <span class="symbol" style="left: 60%; top: 70%;">Δ</span>
+        <span class="symbol" style="left: 50%; top: 20%;">Ω</span>
+        <span class="symbol" style="left: 20%; top: 80%;">ψ</span>
+        <span class="symbol" style="left: 80%; top: 30%;">Σ</span>
+      </div>
+    </div>
   </div>
 
-  <!-- OPTIONAL FLOATING SYMBOLS -->
-  <div class="floating-symbols">
-    <span class="symbol" style="left: 5%; font-size: 1.5rem; animation-delay: 0s;">Λ</span>
-    <span class="symbol" style="left: 15%; font-size: 2rem; animation-delay: 1s;">φ</span>
-    <span class="symbol" style="left: 25%; font-size: 1.8rem; animation-delay: 2s;">Δ</span>
-    <span class="symbol" style="left: 35%; font-size: 1.2rem; animation-delay: 3s;">Ξ</span>
-    <span class="symbol" style="left: 45%; font-size: 2.2rem; animation-delay: 4s;">Ω</span>
-    <span class="symbol" style="left: 55%; font-size: 1.5rem; animation-delay: 5s;">σ</span>
-    <span class="symbol" style="left: 65%; font-size: 1.8rem; animation-delay: 6s;">ψ</span>
-    <span class="symbol" style="left: 75%; font-size: 1.2rem; animation-delay: 7s;">Ξ</span>
-    <span class="symbol" style="left: 85%; font-size: 2rem; animation-delay: 8s;">μ</span>
-    <span class="symbol" style="left: 10%; font-size: 1.3rem; animation-delay: 3s;">Σ</span>
-    <span class="symbol" style="left: 20%; font-size: 1.7rem; animation-delay: 4s;">Π</span>
-    <span class="symbol" style="left: 30%; font-size: 1.4rem; animation-delay: 5s;">Θ</span>
-    <span class="symbol" style="left: 40%; font-size: 1.9rem; animation-delay: 6s;">β</span>
-    <span class="symbol" style="left: 50%; font-size: 1.6rem; animation-delay: 7s;">λ</span>
-    <span class="symbol" style="left: 60%; font-size: 1.3rem; animation-delay: 8s;">δ</span>
-  </div>
-
-  <!-- NAVIGATION -->
+  <!-- === Navigation Overlay === -->
   <nav>
     <button data-section="inventory" class="active">Inventory</button>
     <button data-section="map">Map</button>
@@ -230,41 +180,33 @@
     <button data-section="scanner">Scanner</button>
   </nav>
 
-  <!-- CONTENT SECTIONS -->
+  <!-- === Content Sections (Overlay on top of the room) === -->
   <div id="inventory" class="content-section active-section">
     <h1>Inventory</h1>
-    <p>This is the Inventory area. You can add details later.</p>
+    <p>This is the Inventory area. Content can go here.</p>
   </div>
-
   <div id="map" class="content-section">
     <h1>Map</h1>
-    <div id="map-container" class="neon-border">
-      <!-- Placeholder area for a zoomable map image -->
-      <p style="text-align: center; padding-top: 180px; color: #0ff;">Zoomable map will appear here</p>
-    </div>
+    <p>This is the Map area. Add details as needed.</p>
   </div>
-
   <div id="email" class="content-section">
     <h1>Email</h1>
-    <p>This is the Email area. Add your content later.</p>
+    <p>This is the Email area. Content can be added later.</p>
   </div>
-
   <div id="codex" class="content-section">
     <h1>Codex</h1>
-    <p>This is the Codex area. Add your content later.</p>
+    <p>This is the Codex area. More content to be added.</p>
   </div>
-
   <div id="scanner" class="content-section">
     <h1>Scanner</h1>
-    <p>This is the Scanner area. Add your content later.</p>
+    <p>This is the Scanner area. More content to be added.</p>
   </div>
 
-  <!-- JAVASCRIPT -->
+  <!-- === JavaScript: Navigation & Dynamic Room Rotation === -->
   <script>
-    // SECTION SWITCHING
+    // Navigation Switching Logic
     const buttons = document.querySelectorAll('nav button');
     const sections = document.querySelectorAll('.content-section');
-
     function showSection(sectionId) {
       sections.forEach(section => {
         if (section.id === sectionId) {
@@ -281,7 +223,6 @@
           }, 500);
         }
       });
-      // Update active button
       buttons.forEach(btn => {
         if (btn.getAttribute('data-section') === sectionId) {
           btn.classList.add('active');
@@ -290,14 +231,12 @@
         }
       });
     }
-
     buttons.forEach(button => {
       button.addEventListener('click', () => {
         const sectionId = button.getAttribute('data-section');
         showSection(sectionId);
       });
     });
-
     window.addEventListener('DOMContentLoaded', () => {
       sections.forEach(section => {
         if (!section.classList.contains('active-section')) {
@@ -306,20 +245,21 @@
       });
     });
 
-    // 3D GRID SHIFT WITH MOUSE
-    const animusGrid = document.getElementById('animusGrid');
+    // Dynamic 3D Room Rotation Based on Mouse Position
+    const room = document.getElementById('room');
     document.addEventListener('mousemove', (e) => {
-      // Get cursor position as a fraction of the window size
-      const xFraction = e.clientX / window.innerWidth - 0.5; // range: -0.5 to 0.5
-      const yFraction = e.clientY / window.innerHeight - 0.5;
-
-      // Multiply by some angle factor to set how dramatic the rotation is
-      const rotateX = yFraction * 30; // tilt up/down
-      const rotateY = xFraction * 30; // tilt left/right
-
-      // Update the transform of the grid
-      animusGrid.style.transform =
-        `translate(-50%, -50%) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+      // Calculate a fraction for X and Y (-1 to 1)
+      const xFraction = (e.clientX / window.innerWidth - 0.5) * 2;
+      const yFraction = (e.clientY / window.innerHeight - 0.5) * 2;
+      // Set maximum rotation angles (in degrees)
+      const maxX = 10;
+      const maxY = 10;
+      const rotateX = yFraction * maxX;
+      const rotateY = xFraction * maxY;
+      // Update the room's transform
+      // Base transform already centers the room and flips it (rotateY(180deg))
+      // We add the additional rotations from the mouse movement.
+      room.style.transform = `translate(-50%, -50%) rotateY(180deg) rotateX(${rotateX}deg) rotateY(${rotateY + 180}deg)`;
     });
   </script>
 </body>
