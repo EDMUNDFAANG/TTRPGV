@@ -1,47 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Futuristic Player Stats</title>
   <style>
-    /* Base styles */
+    /* BODY + BACKGROUND */
     body {
       margin: 0;
       padding: 0;
-      background-color: #000;
-      font-family: Arial, sans-serif;
+      /* Futuristic gradient background */
+      background: linear-gradient(115deg, #0cc 0%, #0af 100%);
+      font-family: "Orbitron", sans-serif; /* Orbitron is a free Google Font you can import if you like */
       color: #fff;
+      overflow: hidden; /* So floating symbols remain in place */
+      position: relative;
     }
+
+    /* FLOATING SYMBOLS CONTAINER */
+    .floating-symbols {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none; /* So clicks pass through to your nav/content */
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    /* Each symbol that floats around */
+    .symbol {
+      position: absolute;
+      color: rgba(255, 255, 255, 0.2); /* Slightly transparent white */
+      font-size: 2rem;
+      animation: float 12s linear infinite;
+    }
+
+    /* Keyframes for floating effect (bottom to top) */
+    @keyframes float {
+      0% {
+        transform: translateY(110vh);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-10vh);
+        opacity: 0;
+      }
+    }
+
+    /* NAVIGATION BAR */
     nav {
       display: flex;
       justify-content: center;
-      background-color: #111;
+      background: rgba(0, 0, 0, 0.4); /* Slightly dark overlay for contrast */
       padding: 10px;
       position: fixed;
       top: 0;
       width: 100%;
-      z-index: 1000;
+      z-index: 1002; /* Above the floating symbols */
+      box-shadow: 0 0 10px #0ff; /* Glow effect around nav */
     }
+
     nav button {
-      background: none;
-      border: 2px solid #0ff;
+      background: rgba(0, 255, 255, 0.1);
+      border: 1px solid #0ff;
       color: #0ff;
       margin: 0 10px;
       padding: 10px 20px;
       cursor: pointer;
-      transition: background 0.3s, color 0.3s;
+      font-family: 'Orbitron', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      box-shadow: 0 0 10px #0ff, inset 0 0 10px #0ff;
+      transition: background 0.3s, color 0.3s, box-shadow 0.3s;
     }
+
     nav button:hover,
     nav button.active {
-      background: #0ff;
-      color: #000;
+      background: rgba(0, 255, 255, 0.3);
+      color: #fff;
+      box-shadow: 0 0 15px #0ff, inset 0 0 15px #0ff;
     }
+
+    /* CONTENT SECTIONS */
     .content-section {
       display: none;
       padding: 100px 20px 20px 20px; /* Leave room for nav */
       min-height: 100vh;
       transition: opacity 0.5s ease, transform 0.5s ease;
+      z-index: 2; /* Above the floating symbols */
+      position: relative;
     }
     .active-section {
       display: block;
@@ -52,12 +104,16 @@
       opacity: 0;
       transform: translateX(-20px);
     }
-    /* Neon styling */
+
+    /* NEON BORDER UTILITY */
     .neon-border {
       border: 2px solid #0ff;
       box-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0ff;
+      padding: 20px;
+      margin: 10px 0;
     }
-    /* Map container for zoomable image */
+
+    /* MAP CONTAINER */
     #map-container {
       width: 100%;
       height: 400px;
@@ -75,6 +131,25 @@
   </style>
 </head>
 <body>
+
+  <!-- FLOATING SYMBOLS -->
+  <div class="floating-symbols">
+    <!-- 
+      You can add more or fewer symbols. 
+      Each one can have a random left position & animation delay to scatter them.
+    -->
+    <span class="symbol" style="left: 10%; animation-delay: 0s;">Λ</span>
+    <span class="symbol" style="left: 30%; animation-delay: 2s;">φ</span>
+    <span class="symbol" style="left: 50%; animation-delay: 4s;">Δ</span>
+    <span class="symbol" style="left: 70%; animation-delay: 6s;">Ξ</span>
+    <span class="symbol" style="left: 90%; animation-delay: 8s;">Ω</span>
+    <span class="symbol" style="left: 20%; animation-delay: 3s;">σ</span>
+    <span class="symbol" style="left: 40%; animation-delay: 5s;">ψ</span>
+    <span class="symbol" style="left: 60%; animation-delay: 7s;">Ξ</span>
+    <span class="symbol" style="left: 80%; animation-delay: 9s;">μ</span>
+  </div>
+
+  <!-- NAVIGATION -->
   <nav>
     <button data-section="inventory" class="active">Inventory</button>
     <button data-section="map">Map</button>
@@ -83,7 +158,7 @@
     <button data-section="scanner">Scanner</button>
   </nav>
 
-  <!-- Content Sections -->
+  <!-- CONTENT SECTIONS -->
   <div id="inventory" class="content-section active-section">
     <h1>Inventory</h1>
     <p>This is the Inventory area. You can add details later.</p>
@@ -112,8 +187,8 @@
     <p>This is the Scanner area. Add your content later.</p>
   </div>
 
+  <!-- SCRIPT FOR PAGE SWITCHING -->
   <script>
-    // JavaScript for navigation and transitions
     const buttons = document.querySelectorAll('nav button');
     const sections = document.querySelectorAll('.content-section');
 
@@ -159,9 +234,6 @@
         }
       });
     });
-
-    // Placeholder for future map zoom functionality
-    // Later you can implement a zoom feature for the image inside #map-container.
   </script>
 </body>
 </html>
