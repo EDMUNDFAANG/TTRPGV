@@ -1,118 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Futuristic Holographic Room</title>
-  <!-- Import a futuristic font (Orbitron) -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Animus Corridor Simulation</title>
+  <!-- Include Three.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Optional: If you need additional controls, you can include OrbitControls here -->
   <style>
-    /* === Basic Reset & Body Styling === */
-    * {
+    /* Fullscreen canvas with light blue holographic background */
+    body, html {
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      font-family: 'Orbitron', sans-serif;
       overflow: hidden;
-      background: #b3e5fc; /* A light, holographic blue */
-      color: #fff;
-      position: relative;
+      background: #b3e5fc; /* Holographic light blue */
     }
-    
-    /* === 3D Room Container (Background Scene) === */
-    .room-container {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      perspective: 1200px;
-      perspective-origin: 50% 50%;
-      z-index: 0;
+    canvas {
+      display: block;
     }
-    /* The "room" that holds the 3D faces */
-    .room {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 2000px;
-      height: 2000px;
-      transform-style: preserve-3d;
-      /* The initial translate centers the room and rotateY(180deg) flips the faces so the interior is visible */
-      transform: translate(-50%, -50%) rotateY(180deg);
-      transition: transform 0.1s linear;
-    }
-    
-    /* === Room Faces: Each face has a grid background === */
-    .face {
-      position: absolute;
-      width: 2000px;
-      height: 2000px;
-      backface-visibility: visible;
-      /* Holographic grid: two linear gradients create horizontal & vertical lines */
-      background-color: rgba(255, 255, 255, 0.05);
-      background-image: 
-        linear-gradient(90deg, transparent 48px, rgba(0,150,255,0.4) 49px, transparent 50px),
-        linear-gradient(0deg, transparent 48px, rgba(0,150,255,0.4) 49px, transparent 50px);
-      background-size: 50px 50px;
-      /* A subtle inner glow */
-      box-shadow: inset 0 0 20px rgba(0,150,255,0.2);
-    }
-    /* For a cube of size 2000px (half = 1000px), place each face accordingly.
-       Note: Using the standard cube formulas but leaving the front open so you “enter” the room. */
-    .floor { 
-      /* Floor (bottom): move down 1000px and rotate so its face is upward */
-      transform: translateY(1000px) rotateX(-90deg); 
-    }
-    .ceiling { 
-      /* Ceiling (top): move up 1000px and rotate so its face is downward */
-      transform: translateY(-1000px) rotateX(90deg); 
-    }
-    .left { 
-      /* Left wall: move left 1000px and rotate so its face is rightward (interior) */
-      transform: translateX(-1000px) rotateY(-90deg); 
-    }
-    .right { 
-      /* Right wall: move right 1000px and rotate so its face is leftward (interior) */
-      transform: translateX(1000px) rotateY(90deg); 
-    }
-    .back { 
-      /* Back wall: move backward 1000px and flip it so the interior is visible */
-      transform: translateZ(-1000px) rotateY(180deg); 
-    }
-    
-    /* === Floating Symbols Inside the Room === */
-    .floating-symbols {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      /* Place these symbols above the faces but inside the room */
-      z-index: 2;
-    }
-    .symbol {
-      position: absolute;
-      color: rgba(0,150,255,0.7);
-      font-size: 48px;
-      /* A gentle drift animation */
-      animation: drift 6s ease-in-out infinite;
-    }
-    @keyframes drift {
-      0%   { transform: translate(0, 0); }
-      50%  { transform: translate(20px, -20px); }
-      100% { transform: translate(0, 0); }
-    }
-    
-    /* === Navigation & Content Overlays (Stay on top) === */
+    /* Navigation overlay styling */
     nav {
       position: fixed;
       top: 0;
       width: 100%;
-      background: rgba(0, 0, 0, 0.3);
+      background: rgba(0,0,0,0.3);
       padding: 10px;
       display: flex;
       justify-content: center;
-      z-index: 100;
+      z-index: 10;
       box-shadow: 0 0 10px rgba(0,150,255,0.5);
     }
     nav button {
@@ -123,55 +38,34 @@
       padding: 10px 20px;
       cursor: pointer;
       text-transform: uppercase;
-      transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+      transition: background 0.3s, color 0.3s;
+      font-family: Arial, sans-serif;
     }
-    nav button:hover,
-    nav button.active {
+    nav button:hover, nav button.active {
       background: rgba(0,150,255,0.7);
       color: #fff;
-      box-shadow: 0 0 15px rgba(0,150,255,0.7);
     }
+    /* Content sections (for Inventory, Map, etc.) overlaying the scene */
     .content-section {
-      position: relative;
-      z-index: 101;
-      padding: 100px 20px 20px 20px;
-      min-height: 100vh;
-      background: transparent;
-      transition: opacity 0.5s ease, transform 0.5s ease;
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 20px;
+      color: #000;
+      background: rgba(255,255,255,0.8);
+      z-index: 10;
+      overflow: auto;
+      display: none;
     }
-    .active-section {
+    .content-section.active {
       display: block;
-      opacity: 1;
-      transform: translateX(0);
-    }
-    .fade-out {
-      opacity: 0;
-      transform: translateX(-20px);
     }
   </style>
 </head>
 <body>
-  <!-- === 3D Room Background === -->
-  <div class="room-container">
-    <div class="room" id="room">
-      <!-- Cube Faces (Open front so you “enter” the room) -->
-      <div class="face floor"></div>
-      <div class="face ceiling"></div>
-      <div class="face left"></div>
-      <div class="face right"></div>
-      <div class="face back"></div>
-      <!-- Floating Symbols (These drift gently within the room) -->
-      <div class="floating-symbols">
-        <span class="symbol" style="left: 30%; top: 40%;">Λ</span>
-        <span class="symbol" style="left: 60%; top: 70%;">Δ</span>
-        <span class="symbol" style="left: 50%; top: 20%;">Ω</span>
-        <span class="symbol" style="left: 20%; top: 80%;">ψ</span>
-        <span class="symbol" style="left: 80%; top: 30%;">Σ</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- === Navigation Overlay === -->
+  <!-- Navigation Overlay -->
   <nav>
     <button data-section="inventory" class="active">Inventory</button>
     <button data-section="map">Map</button>
@@ -179,88 +73,225 @@
     <button data-section="codex">Codex</button>
     <button data-section="scanner">Scanner</button>
   </nav>
-
-  <!-- === Content Sections (Overlay on top of the room) === -->
-  <div id="inventory" class="content-section active-section">
+  <!-- Content Sections -->
+  <div id="inventory" class="content-section active">
     <h1>Inventory</h1>
-    <p>This is the Inventory area. Content can go here.</p>
+    <p>Inventory details go here.</p>
   </div>
   <div id="map" class="content-section">
     <h1>Map</h1>
-    <p>This is the Map area. Add details as needed.</p>
+    <p>Map details go here.</p>
   </div>
   <div id="email" class="content-section">
     <h1>Email</h1>
-    <p>This is the Email area. Content can be added later.</p>
+    <p>Email details go here.</p>
   </div>
   <div id="codex" class="content-section">
     <h1>Codex</h1>
-    <p>This is the Codex area. More content to be added.</p>
+    <p>Codex details go here.</p>
   </div>
   <div id="scanner" class="content-section">
     <h1>Scanner</h1>
-    <p>This is the Scanner area. More content to be added.</p>
+    <p>Scanner details go here.</p>
   </div>
 
-  <!-- === JavaScript: Navigation & Dynamic Room Rotation === -->
+  <!-- Three.js will inject the canvas -->
   <script>
-    // Navigation Switching Logic
-    const buttons = document.querySelectorAll('nav button');
-    const sections = document.querySelectorAll('.content-section');
-    function showSection(sectionId) {
-      sections.forEach(section => {
-        if (section.id === sectionId) {
-          section.style.display = 'block';
-          setTimeout(() => {
-            section.classList.add('active-section');
-            section.classList.remove('fade-out');
-          }, 50);
-        } else {
-          section.classList.remove('active-section');
-          section.classList.add('fade-out');
-          setTimeout(() => {
-            section.style.display = 'none';
-          }, 500);
-        }
-      });
-      buttons.forEach(btn => {
-        if (btn.getAttribute('data-section') === sectionId) {
-          btn.classList.add('active');
-        } else {
-          btn.classList.remove('active');
-        }
-      });
-    }
-    buttons.forEach(button => {
+    // ===== Navigation Switching =====
+    const navButtons = document.querySelectorAll('nav button');
+    const contentSections = document.querySelectorAll('.content-section');
+    navButtons.forEach(button => {
       button.addEventListener('click', () => {
         const sectionId = button.getAttribute('data-section');
-        showSection(sectionId);
-      });
-    });
-    window.addEventListener('DOMContentLoaded', () => {
-      sections.forEach(section => {
-        if (!section.classList.contains('active-section')) {
-          section.style.display = 'none';
-        }
+        contentSections.forEach(section => {
+          section.classList.toggle('active', section.id === sectionId);
+        });
+        navButtons.forEach(btn => {
+          btn.classList.toggle('active', btn === button);
+        });
       });
     });
 
-    // Dynamic 3D Room Rotation Based on Mouse Position
-    const room = document.getElementById('room');
-    document.addEventListener('mousemove', (e) => {
-      // Calculate a fraction for X and Y (-1 to 1)
-      const xFraction = (e.clientX / window.innerWidth - 0.5) * 2;
-      const yFraction = (e.clientY / window.innerHeight - 0.5) * 2;
-      // Set maximum rotation angles (in degrees)
-      const maxX = 10;
-      const maxY = 10;
-      const rotateX = yFraction * maxX;
-      const rotateY = xFraction * maxY;
-      // Update the room's transform
-      // Base transform already centers the room and flips it (rotateY(180deg))
-      // We add the additional rotations from the mouse movement.
-      room.style.transform = `translate(-50%, -50%) rotateY(180deg) rotateX(${rotateX}deg) rotateY(${rotateY + 180}deg)`;
-    });
+    // ===== Three.js Setup =====
+    let scene, camera, renderer, corridor, glyphs = [];
+    let mouse = new THREE.Vector2(0, 0);
+    let targetRotationX = 0, targetRotationY = 0;
+
+    init();
+    animate();
+
+    function init() {
+      // Create scene with a holographic light blue background and fog
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xb3e5fc);
+      scene.fog = new THREE.FogExp2(0xb3e5fc, 0.0008);
+
+      // Create perspective camera
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 10000);
+      camera.position.set(0, 0, 500);
+
+      // Renderer with antialiasing
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // Create the corridor as an open box (missing the front face) using five large planes
+      corridor = new THREE.Group();
+      const gridTexture = createGridTexture();
+      const planeMaterial = new THREE.MeshBasicMaterial({ map: gridTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+      const size = 4000; // overall room size
+      const half = size / 2;
+
+      // Floor
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
+      floor.rotation.x = -Math.PI/2;
+      floor.position.y = -half;
+      corridor.add(floor);
+
+      // Ceiling
+      const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
+      ceiling.rotation.x = Math.PI/2;
+      ceiling.position.y = half;
+      corridor.add(ceiling);
+
+      // Left Wall
+      const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
+      leftWall.rotation.y = Math.PI/2;
+      leftWall.position.x = -half;
+      corridor.add(leftWall);
+
+      // Right Wall
+      const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
+      rightWall.rotation.y = -Math.PI/2;
+      rightWall.position.x = half;
+      corridor.add(rightWall);
+
+      // Back Wall
+      const backWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
+      backWall.position.z = -half;
+      backWall.rotation.y = Math.PI;
+      corridor.add(backWall);
+
+      scene.add(corridor);
+
+      // Create floating glyphs that drift and react to the cursor
+      const glyphLetters = ["Λ", "Δ", "Ω", "ψ", "Σ", "Φ", "Ξ", "Π"];
+      for (let i = 0; i < 10; i++) {
+        let letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
+        let sprite = createGlyphSprite(letter);
+        // Position glyph randomly within the corridor
+        sprite.position.set(
+          (Math.random() - 0.5) * size * 0.6,
+          (Math.random() - 0.5) * size * 0.6,
+          -Math.random() * size * 0.5  // closer to the viewer than the back wall
+        );
+        // Save initial position for drifting
+        sprite.userData = { basePosition: sprite.position.clone(), speed: Math.random() * 0.5 + 0.5 };
+        scene.add(sprite);
+        glyphs.push(sprite);
+      }
+
+      // Listen for mouse movement for interactive scene rotation and glyph reaction
+      document.addEventListener('mousemove', onDocumentMouseMove, false);
+      window.addEventListener('resize', onWindowResize, false);
+    }
+
+    // Create a canvas texture with a grid of thin, fading white lines on a light blue background
+    function createGridTexture() {
+      const size = 512;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext('2d');
+      // Fill with holographic light blue
+      context.fillStyle = "#b3e5fc";
+      context.fillRect(0, 0, size, size);
+      // Draw thin white grid lines
+      context.strokeStyle = "rgba(255,255,255,0.5)";
+      context.lineWidth = 1;
+      const spacing = 50;
+      for (let i = 0; i <= size; i += spacing) {
+        context.beginPath();
+        context.moveTo(i, 0);
+        context.lineTo(i, size);
+        context.stroke();
+      }
+      for (let j = 0; j <= size; j += spacing) {
+        context.beginPath();
+        context.moveTo(0, j);
+        context.lineTo(size, j);
+        context.stroke();
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(20, 20);
+      return texture;
+    }
+
+    // Create a sprite for a glyph (a floating symbol) using a canvas texture
+    function createGlyphSprite(letter) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const context = canvas.getContext('2d');
+      context.font = "100px Orbitron, sans-serif";
+      context.fillStyle = "rgba(255,255,255,0.8)";
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(letter, 64, 64);
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.scale.set(150, 150, 1);
+      return sprite;
+    }
+
+    // Update mouse coordinates and determine target rotations based on cursor position
+    function onDocumentMouseMove(event) {
+      // Normalize mouse coordinates to [-1, 1]
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      // Set target rotations (small angles) based on mouse position
+      const maxRotation = 0.1; // in radians
+      targetRotationY = mouse.x * maxRotation;
+      targetRotationX = mouse.y * maxRotation;
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Animation loop: update scene rotation and animate glyphs
+    function animate() {
+      requestAnimationFrame(animate);
+      // Smoothly rotate the corridor group to simulate a shifting, infinite space
+      corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
+      corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
+
+      // Update each glyph: apply a gentle oscillation and react if the cursor is near
+      glyphs.forEach(sprite => {
+        let t = Date.now() * 0.001 * sprite.userData.speed;
+        // Basic oscillation around the original (base) position
+        sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 10;
+        sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 10;
+        // Project sprite position to screen space to check proximity to mouse
+        let pos = sprite.position.clone();
+        pos.project(camera);
+        let dx = pos.x - mouse.x;
+        let dy = pos.y - mouse.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+        // If the mouse is near, push the glyph away slightly
+        if(distance < 0.3) {
+          let push = (0.3 - distance) * 50;
+          sprite.position.x += dx * 0.02 * push;
+          sprite.position.y += dy * 0.02 * push;
+        }
+      });
+
+      renderer.render(scene, camera);
+    }
   </script>
 </body>
 </html>
