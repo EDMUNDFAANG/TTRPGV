@@ -109,7 +109,7 @@
     animate();
 
     function init() {
-      // Create scene with fog (to fade corridor edges)
+      // Create scene with a holographic light blue background and fog for depth
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0xb3e5fc);
       scene.fog = new THREE.FogExp2(0xb3e5fc, 0.0008);
@@ -118,12 +118,12 @@
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
       camera.position.set(0, 0, 500);
 
-      // Set up renderer
+      // Set up renderer with antialiasing
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
-      // Build corridor (an open box missing the front face)
+      // Build corridor as an open box (no front face) using five planes
       corridor = new THREE.Group();
       const gridTexture = createGridTexture();
       const planeMaterial = new THREE.MeshBasicMaterial({
@@ -147,19 +147,19 @@
       ceiling.position.y = half;
       corridor.add(ceiling);
 
-      // Left wall
+      // Left Wall
       const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
       leftWall.rotation.y = Math.PI / 2;
       leftWall.position.x = -half;
       corridor.add(leftWall);
 
-      // Right wall
+      // Right Wall
       const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
       rightWall.rotation.y = -Math.PI / 2;
       rightWall.position.x = half;
       corridor.add(rightWall);
 
-      // Back wall
+      // Back Wall
       const backWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
       backWall.rotation.y = Math.PI;
       backWall.position.z = -half;
@@ -167,16 +167,19 @@
 
       scene.add(corridor);
 
-      // Create floating glyphs that gently oscillate and react to mouse movement
+      // Create floating glyphs that gently oscillate
       const glyphLetters = ["Λ", "Δ", "Ω", "ψ", "Σ", "Φ", "Ξ", "Π"];
-      for (let i = 0; i < 10; i++) {
+      // Increase number of glyphs for better coverage
+      for (let i = 0; i < 20; i++) {
         const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
         const sprite = createGlyphSprite(letter);
+        // Random position within a portion of the corridor
         sprite.position.set(
           (Math.random() - 0.5) * size * 0.6,
           (Math.random() - 0.5) * size * 0.6,
           -Math.random() * size * 0.5
         );
+        // Save base position and assign a random drift speed
         sprite.userData = {
           basePosition: sprite.position.clone(),
           speed: Math.random() * 0.5 + 0.5
@@ -185,11 +188,11 @@
         glyphs.push(sprite);
       }
 
-      // Event listeners
+      // Event listeners for resize and mouse movement
       window.addEventListener('resize', onWindowResize, false);
       document.addEventListener('mousemove', onDocumentMouseMove, false);
       
-      // Navigation button events
+      // Navigation button events (UI overlay)
       const navButtons = document.querySelectorAll('nav button');
       const contentSections = document.querySelectorAll('.content-section');
       navButtons.forEach(button => {
@@ -205,7 +208,7 @@
       });
     }
 
-    // Create a canvas texture for the grid with thin, fading white lines
+    // Create a canvas texture for the grid with thin, prominent white lines
     function createGridTexture() {
       const size = 512;
       const canvas = document.createElement('canvas');
@@ -217,8 +220,8 @@
       ctx.fillStyle = "#b3e5fc";
       ctx.fillRect(0, 0, size, size);
 
-      // Draw thin white grid lines
-      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      // Draw thin white grid lines (increased opacity)
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
       ctx.lineWidth = 1;
       const spacing = 50;
       for (let x = 0; x <= size; x += spacing) {
@@ -235,11 +238,12 @@
       }
       const texture = new THREE.CanvasTexture(canvas);
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(20, 20);
+      // Increase repeat so the grid appears denser
+      texture.repeat.set(40, 40);
       return texture;
     }
 
-    // Create a sprite for a glyph using a canvas texture
+    // Create a sprite for a glyph (floating symbol) using a canvas texture
     function createGlyphSprite(letter) {
       const canvas = document.createElement('canvas');
       canvas.width = 128;
@@ -247,7 +251,7 @@
       const ctx = canvas.getContext('2d');
 
       ctx.font = "100px Arial";
-      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(letter, 64, 64);
@@ -266,9 +270,10 @@
     }
 
     function onDocumentMouseMove(event) {
+      // Normalize mouse coordinates to [-1, 1]
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
+      // Set target rotations based on mouse position
       const maxRotation = 0.1; // in radians
       targetRotationY = mouse.x * maxRotation;
       targetRotationX = mouse.y * maxRotation;
@@ -280,7 +285,7 @@
       corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
 
-      // Animate glyphs with gentle oscillation
+      // Animate glyphs with a gentle oscillation
       glyphs.forEach(sprite => {
         const t = Date.now() * 0.001 * sprite.userData.speed;
         sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 10;
