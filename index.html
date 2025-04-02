@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Animus Corridor Simulation [Refined]</title>
+    <title>Animus Corridor Simulation [Refined v2]</title>
     <!-- Load Orbitron font -->
     <link href="https://fonts.googleapis.com/css?family=Orbitron" rel="stylesheet">
     <!-- Three.js from CDN -->
@@ -919,11 +919,13 @@
                      mainContent.classList.add("visible"); // Triggers its animation
                     loadingStartTime = Date.now() * 0.001;
                      if (typeof THREE !== 'undefined') { // Check if Three.js loaded
+                         console.log("Three.js loaded, initializing scene...");
                          initThreeJS();
                          animateThreeJS();
                      } else {
                          console.error("Three.js failed to load.");
                          // Optionally show an error message to the user
+                         alert("Error: Background visualization library failed to load.")
                      }
                 }, { once: true });
             } else {
@@ -1023,7 +1025,10 @@
         }
 
         function addInventoryEventListeners() {
-            if (!inventorySlots) return; // Guard if slots aren't ready
+            if (!inventorySlots) {
+                console.warn("Inventory slots not ready for event listeners.");
+                return; // Guard if slots aren't ready
+             }
 
              inventorySlots.forEach(slot => {
                  slot.addEventListener("click", () => {
@@ -1213,7 +1218,7 @@
             });
          });
 
-         // ----- Three.js Scene & Animation Code (Minimal Logic Changes, Timing Adjusted) -----
+         // ----- Three.js Scene & Animation Code -----
         let scene, camera, renderer;
         let corridor;
         let ceilingMesh, leftWallMesh, rightWallMesh;
@@ -1232,238 +1237,308 @@
 
         // Renamed init/animate functions
          function initThreeJS() {
-             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0d1b2a);
-            scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0007); // Keep fog
+             try { // Add a try...catch block for robust initialization
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x0d1b2a);
+                scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0007); // Keep fog
 
-             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
-            camera.position.set(0, 0, 1800); // Initial camera position
-             camera.lookAt(0, 0, 0);
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+                camera.position.set(0, 0, 1800); // Initial camera position
+                camera.lookAt(0, 0, 0);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            // Ensure canvas is styled correctly by CSS (position: fixed, z-index: -1)
-             document.body.insertBefore(renderer.domElement, document.body.firstChild); // Add canvas to body start
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                 // Ensure canvas is styled correctly by CSS (position: fixed, z-index: -1)
+                 document.body.insertBefore(renderer.domElement, document.body.firstChild); // Add canvas to body start
 
-            // --- Lights ---
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.45); // Slightly brighter ambient
-             scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xADD8E6, 0.35); // Lighter blue directional
-             directionalLight.position.set(1, 1.5, 1).normalize();
-             scene.add(directionalLight);
+                // --- Lights ---
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.45); // Slightly brighter ambient
+                scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xADD8E6, 0.35); // Lighter blue directional
+                directionalLight.position.set(1, 1.5, 1).normalize();
+                scene.add(directionalLight);
 
-             // --- Corridor ---
-             corridor = new THREE.Group();
-             scene.add(corridor);
+                // --- Corridor ---
+                corridor = new THREE.Group();
+                scene.add(corridor);
 
-            // --- Textures ---
-            leftWallTexture = createCodeTexture(512);
-             leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping;
-             leftWallTexture.repeat.set(4, 5);
-            rightWallTexture = createCodeTexture(512); // Could create variation if needed
-             rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
-             rightWallTexture.repeat.set(4, 5);
-            floorTexture = createCodeTexture(512); // Floor uses same code texture
-             floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-             floorTexture.repeat.set(4, 10);
-            ceilingTexture = createCircuitTexture(512);
-             ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
-             ceilingTexture.repeat.set(3, 3); // Slightly denser ceiling circuits
+                // --- Textures ---
+                leftWallTexture = createCodeTexture(512);
+                leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping;
+                leftWallTexture.repeat.set(4, 5);
+                rightWallTexture = createCodeTexture(512); // Could create variation if needed
+                rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
+                rightWallTexture.repeat.set(4, 5);
+                floorTexture = createCodeTexture(512); // Floor uses same code texture
+                floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+                floorTexture.repeat.set(4, 10);
+                ceilingTexture = createCircuitTexture(512);
+                ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
+                ceilingTexture.repeat.set(3, 3); // Slightly denser ceiling circuits
 
-             // --- Materials ---
-             const wallMat = new THREE.MeshPhongMaterial({ // Shared material for walls
-                 map: leftWallTexture, // Use left texture for both initially (can be different)
-                 side: THREE.DoubleSide,
-                 transparent: true,
-                 opacity: 0.65, // Slightly less opaque walls
-                 specular: 0x111111, // Dull specular
-                 shininess: 10
-             });
-             const floorMat = new THREE.MeshPhongMaterial({ map: floorTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-             const ceilingMat = new THREE.MeshPhongMaterial({ map: ceilingTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+                // --- Materials ---
+                const wallMat = new THREE.MeshPhongMaterial({ // Shared material for walls
+                    map: leftWallTexture, // Use left texture for both initially (can be different)
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.65, // Slightly less opaque walls
+                    specular: 0x111111, // Dull specular
+                    shininess: 10
+                });
+                const floorMat = new THREE.MeshPhongMaterial({ map: floorTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+                const ceilingMat = new THREE.MeshPhongMaterial({ map: ceilingTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
 
-             // --- Geometry ---
-             const planeGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
+                // --- Geometry ---
+                const planeGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
 
-            // --- Meshes ---
-            ceilingMesh = new THREE.Mesh(planeGeo, ceilingMat);
-            ceilingMesh.rotation.x = Math.PI / 2;
-            ceilingMesh.position.y = CORRIDOR_SIZE / 2;
-             corridor.add(ceilingMesh);
+                // --- Meshes ---
+                ceilingMesh = new THREE.Mesh(planeGeo, ceilingMat);
+                ceilingMesh.rotation.x = Math.PI / 2;
+                ceilingMesh.position.y = CORRIDOR_SIZE / 2;
+                corridor.add(ceilingMesh);
 
-            leftWallMesh = new THREE.Mesh(planeGeo, wallMat.clone()); // Clone material
-             leftWallMesh.material.map = leftWallTexture; // Assign correct texture map
-            leftWallMesh.rotation.y = Math.PI / 2;
-             leftWallMesh.position.x = -CORRIDOR_SIZE / 2 - 500; // Start off-screen
-             corridor.add(leftWallMesh);
+                leftWallMesh = new THREE.Mesh(planeGeo, wallMat.clone()); // Clone material
+                leftWallMesh.material.map = leftWallTexture; // Assign correct texture map
+                leftWallMesh.rotation.y = Math.PI / 2;
+                leftWallMesh.position.x = -CORRIDOR_SIZE / 2 - 500; // Start off-screen
+                corridor.add(leftWallMesh);
 
-            rightWallMesh = new THREE.Mesh(planeGeo, wallMat.clone()); // Clone material
-             rightWallMesh.material.map = rightWallTexture; // Assign correct texture map
-             rightWallMesh.rotation.y = -Math.PI / 2;
-             rightWallMesh.position.x = CORRIDOR_SIZE / 2 + 500; // Start off-screen
-             corridor.add(rightWallMesh);
+                rightWallMesh = new THREE.Mesh(planeGeo, wallMat.clone()); // Clone material
+                rightWallMesh.material.map = rightWallTexture; // Assign correct texture map
+                rightWallMesh.rotation.y = -Math.PI / 2;
+                rightWallMesh.position.x = CORRIDOR_SIZE / 2 + 500; // Start off-screen
+                corridor.add(rightWallMesh);
 
-            // --- Plexus ---
-            plexusGroup = createScrollingPlexus();
-            plexusGroup.rotation.x = -0.2;
-             plexusGroup.scale.set(0, 0, 0); // Start scaled down
-             plexusGroup.renderOrder = 1; // Ensure rendered correctly relative to sprites
-            scene.add(plexusGroup);
+                // --- Plexus ---
+                 plexusGroup = createScrollingPlexus(); // Corrected function called here
+                 if (!plexusGroup) { // Check if plexus creation failed
+                     console.error("Plexus creation failed. Skipping add.");
+                     // Handle error appropriately - maybe show simpler background?
+                 } else {
+                    plexusGroup.rotation.x = -0.2;
+                     plexusGroup.scale.set(0, 0, 0); // Start scaled down
+                     plexusGroup.renderOrder = 1; // Ensure rendered correctly relative to sprites
+                    scene.add(plexusGroup);
+                }
 
-            // --- Glyphs ---
-            const glyphLetters = ["⍀", "⍁", "⍂", "⍃", "⍄", "⍅", "⍆", "⍇", "⍈", "⍉", "⌿", "⍀", "⎍", "⏚", "⌘", "⌥", "⌶"]; // More abstract/tech symbols
-            for (let i = 0; i < 40; i++) { // Increase glyph count slightly
-                const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
-                const sprite = createGlyphSprite(letter);
-                 // Initialize position (more spread out)
-                const radius = 800 + Math.random() * 1000;
-                 const angle = Math.random() * Math.PI * 2;
-                 const height = Math.random() * 1950 - 700;
-                 const depth = -Math.random() * (CORRIDOR_SIZE * 0.8); // More depth range
-                 sprite.position.set(Math.cos(angle) * radius, height, depth);
+                 // --- Glyphs ---
+                const glyphLetters = ["⍀", "⍁", "⍂", "⍃", "⍄", "⍅", "⍆", "⍇", "⍈", "⍉", "⌿", "⍀", "⎍", "⏚", "⌘", "⌥", "⌶"]; // More abstract/tech symbols
+                 glyphs = []; // Clear glyphs array before creating new ones
+                for (let i = 0; i < 40; i++) { // Increase glyph count slightly
+                     const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
+                     const sprite = createGlyphSprite(letter);
+                     // Initialize position (more spread out)
+                     const radius = 800 + Math.random() * 1000;
+                     const angle = Math.random() * Math.PI * 2;
+                     const height = Math.random() * 1950 - 700;
+                     const depth = -Math.random() * (CORRIDOR_SIZE * 0.8); // More depth range
+                     sprite.position.set(Math.cos(angle) * radius, height, depth);
 
-                sprite.userData = {
-                     basePosition: sprite.position.clone(),
-                     oscillationSpeed: Math.random() * 0.4 + 0.3, // Slower oscillation
-                     velocity: new THREE.Vector3(0, 0, 0),
-                     lifetime: Math.random() * 15, // Start at random lifetime phase
-                     maxLifetime: 15 + Math.random() * 10 // Longer life variance
-                 };
-                 glyphs.push(sprite);
-                 scene.add(sprite);
-            }
+                    sprite.userData = {
+                         basePosition: sprite.position.clone(),
+                         oscillationSpeed: Math.random() * 0.4 + 0.3, // Slower oscillation
+                         velocity: new THREE.Vector3(0, 0, 0),
+                         lifetime: Math.random() * 15, // Start at random lifetime phase
+                         maxLifetime: 15 + Math.random() * 10 // Longer life variance
+                     };
+                     glyphs.push(sprite);
+                     scene.add(sprite);
+                 }
 
-            // --- Event Listeners ---
-            window.addEventListener("resize", onWindowResize, false);
-            document.addEventListener("mousemove", onDocumentMouseMove, false);
+                 // --- Event Listeners ---
+                 window.addEventListener("resize", onWindowResize, false);
+                 document.addEventListener("mousemove", onDocumentMouseMove, false);
+
+                 console.log("Three.js scene initialized successfully.");
+
+             } catch (error) {
+                 console.error("Error during Three.js initialization:", error);
+                 alert("Failed to initialize 3D background. Please check console for errors.");
+                 // Disable further animation attempts if init fails
+                 renderer = null; // Flag that initialization failed
+             }
          }
 
+
          function animateThreeJS() {
+            // Stop animation if renderer failed to initialize
+             if (!renderer) return;
+
              requestAnimationFrame(animateThreeJS);
             const time = Date.now() * 0.001;
              // Ensure loadingStartTime is set before calculating elapsedTime
              if (typeof loadingStartTime === 'undefined') return;
              const elapsedTime = time - loadingStartTime;
+            if (isNaN(elapsedTime)) return; // Additional safety check
+
 
             // --- Animations Based on Elapsed Time Since Login ---
 
             // Global glyph fade-in (matches main content appearance)
              const glyphStartDelay = 0.5; // Start fading slightly earlier
             const glyphFadeDuration = 2.0; // Slower fade in
-            globalGlyphFade = (elapsedTime < glyphStartDelay) ? 0 : Math.min((elapsedTime - glyphStartDelay) / glyphFadeDuration, 0.7); // Max opacity lower
+             // Update glyph fade calculation (check if glyphs array exists)
+             if(glyphs && glyphs.length > 0) {
+                 globalGlyphFade = (elapsedTime < glyphStartDelay) ? 0 : Math.min((elapsedTime - glyphStartDelay) / glyphFadeDuration, 0.7); // Max opacity lower
+             } else {
+                globalGlyphFade = 0;
+             }
 
              // Corridor rotation based on mouse
-             corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.04; // Smoother follow
-             corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.04;
-
-             // Animate walls sliding in (sync with mainContent fade)
-             const wallAnimDuration = 2.5; // Slightly longer slide
-             const wallStartDelay = 0.4; // Start slightly earlier to overlap content fade
-             if (elapsedTime >= wallStartDelay && elapsedTime < wallStartDelay + wallAnimDuration) {
-                const progress = (elapsedTime - wallStartDelay) / wallAnimDuration;
-                 const easeProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI); // Ease-in-out remains good
-                 leftWallMesh.position.x = THREE.MathUtils.lerp(-CORRIDOR_SIZE / 2 - 500, -CORRIDOR_SIZE / 2, easeProgress);
-                rightWallMesh.position.x = THREE.MathUtils.lerp(CORRIDOR_SIZE / 2 + 500, CORRIDOR_SIZE / 2, easeProgress);
-             } else if (elapsedTime >= wallStartDelay + wallAnimDuration) {
-                // Ensure final position is exact after animation
-                 leftWallMesh.position.x = -CORRIDOR_SIZE / 2;
-                 rightWallMesh.position.x = CORRIDOR_SIZE / 2;
-             }
-
-            // Texture scrolling
-            floorTexture.offset.y += SCROLL_SPEED_FLOOR;
-            leftWallTexture.offset.y += SCROLL_SPEED_CODE;
-            rightWallTexture.offset.y += SCROLL_SPEED_CODE;
-            ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.5;
-
-             // Animate plexus appearance (sync with nav appearance)
-             const plexusStartDelay = 3.0; // Start when nav starts animating
-             const plexusAnimDuration = 1.8; // Slower scale up
-             if (elapsedTime < plexusStartDelay) {
-                plexusGroup.scale.set(0, 0, 0);
-            } else if (elapsedTime < plexusStartDelay + plexusAnimDuration) {
-                 const s = (elapsedTime - plexusStartDelay) / plexusAnimDuration;
-                const easeS = 1 - Math.pow(1 - s, 3); // Ease-out cubic (faster start, slow end)
-                 plexusGroup.scale.set(easeS, easeS, easeS);
-            } else {
-                 plexusGroup.scale.set(1, 1, 1); // Ensure final scale is 1
+            if (corridor) { // Check if corridor exists
+                 corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.04; // Smoother follow
+                 corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.04;
             }
 
+             // Animate walls sliding in (sync with mainContent fade)
+             // Check if wall meshes exist before animating them
+            if (leftWallMesh && rightWallMesh) {
+                 const wallAnimDuration = 2.5; // Slightly longer slide
+                 const wallStartDelay = 0.4; // Start slightly earlier to overlap content fade
+                 if (elapsedTime >= wallStartDelay && elapsedTime < wallStartDelay + wallAnimDuration) {
+                    const progress = (elapsedTime - wallStartDelay) / wallAnimDuration;
+                    const easeProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI); // Ease-in-out remains good
+                    leftWallMesh.position.x = THREE.MathUtils.lerp(-CORRIDOR_SIZE / 2 - 500, -CORRIDOR_SIZE / 2, easeProgress);
+                    rightWallMesh.position.x = THREE.MathUtils.lerp(CORRIDOR_SIZE / 2 + 500, CORRIDOR_SIZE / 2, easeProgress);
+                 } else if (elapsedTime >= wallStartDelay + wallAnimDuration) {
+                     // Ensure final position is exact after animation
+                     leftWallMesh.position.x = -CORRIDOR_SIZE / 2;
+                     rightWallMesh.position.x = CORRIDOR_SIZE / 2;
+                 }
+            }
+
+            // Texture scrolling (Check if textures exist)
+             if(floorTexture) floorTexture.offset.y += SCROLL_SPEED_FLOOR;
+             if(leftWallTexture) leftWallTexture.offset.y += SCROLL_SPEED_CODE;
+             if(rightWallTexture) rightWallTexture.offset.y += SCROLL_SPEED_CODE;
+             if(ceilingTexture) ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.5;
+
+
+             // Animate plexus appearance (sync with nav appearance)
+            if(plexusGroup) { // Check if plexusGroup exists
+                 const plexusStartDelay = 3.0; // Start when nav starts animating
+                 const plexusAnimDuration = 1.8; // Slower scale up
+                 if (elapsedTime < plexusStartDelay) {
+                    plexusGroup.scale.set(0, 0, 0);
+                 } else if (elapsedTime < plexusStartDelay + plexusAnimDuration) {
+                     const s = (elapsedTime - plexusStartDelay) / plexusAnimDuration;
+                     const easeS = 1 - Math.pow(1 - s, 3); // Ease-out cubic (faster start, slow end)
+                     plexusGroup.scale.set(easeS, easeS, easeS);
+                 } else {
+                     plexusGroup.scale.set(1, 1, 1); // Ensure final scale is 1
+                 }
+            }
+
+
             // Update dynamic elements
-            if (plexusGroup && plexusGroup.children.length > 0 && plexusGroup.scale.x > 0) { // Only update if visible
-                updateScrollingPlexus(plexusGroup.children[0], time);
+            // Check if plexus exists and is scaled up before updating
+             if (plexusGroup && plexusGroup.children.length > 0 && plexusGroup.scale.x > 0.01) {
+                 updateScrollingPlexus(plexusGroup.children[0], time);
              }
-            updateGlyphs(time);
+             // Check if glyphs array exists and has items before updating
+             if (glyphs && glyphs.length > 0) {
+                 updateGlyphs(time);
+             }
 
             // Render scene
-             renderer.render(scene, camera);
+             if (scene && camera) { // Check scene and camera exist
+                 renderer.render(scene, camera);
+             }
          }
 
          // --- Helper functions for Three.js ---
 
+        // ** THIS IS THE CORRECTED FUNCTION **
          function createScrollingPlexus() {
              const group = new THREE.Group();
-            const nodeCount = 180, threshold = 450, scrollSpeed = 0.8; // Adjusted parameters
-             const regionMinX = -1200, regionMaxX = 1200, regionMinY = -1150, regionMaxY = -650; // Wider Y range
-             const regionMinZ = -3200, regionMaxZ = 1300; // Slightly deeper
-            const regionWidth = regionMaxX - regionMinX, regionDepth = regionMaxZ - regionMinZ;
+             const nodeCount = 180, threshold = 450, scrollSpeed = 0.8;
+             const regionMinX = -1200, regionMaxX = 1200, regionMinY = -1150, regionMaxY = -650;
+             const regionMinZ = -3200, regionMaxZ = 1300;
+             const regionWidth = regionMaxX - regionMinX, regionDepth = regionMaxZ - regionMinZ;
 
-            const nodes = [];
-            for (let i = 0; i < nodeCount; i++) {
-                nodes.push(
+             const nodes = [];
+             for (let i = 0; i < nodeCount; i++) {
+                 nodes.push(
                      new THREE.Vector3(
                          THREE.MathUtils.randFloat(regionMinX, regionMaxX),
                          THREE.MathUtils.randFloat(regionMinY, regionMaxY),
                          THREE.MathUtils.randFloat(regionMinZ, regionMaxZ)
-                    ). PADDING_TOP
+                     ) // CORRECTED LINE - Removed ". PADDING_TOP"
                  );
              }
 
-            const geometry = new THREE.BufferGeometry();
-            // Use LineSegments for better performance with many short lines
+             const geometry = new THREE.BufferGeometry();
              const material = new THREE.LineBasicMaterial({
-                 color: 0x00aaff, // Slightly lighter blue
+                 color: 0x00aaff,
                  transparent: true,
-                 opacity: 0.45, // More subtle lines
-                 depthWrite: false // Prevent depth buffer issues
+                 opacity: 0.45,
+                 depthWrite: false
              });
 
              const plexusLines = new THREE.LineSegments(geometry, material);
-            plexusLines.frustumCulled = false; // Important for lines that might span frustum edges
-            plexusLines.renderOrder = 1;
+             plexusLines.frustumCulled = false;
+             plexusLines.renderOrder = 1;
              plexusLines.userData = { nodes, regionMinZ, regionMaxZ, regionDepth, threshold, scrollSpeed };
-            group.add(plexusLines);
-            return group;
+             group.add(plexusLines);
+             return group;
          }
 
 
          function updateScrollingPlexus(plexusLines, time) {
+            // Add check if plexusLines geometry exists
+            if (!plexusLines || !plexusLines.geometry) return;
+
              const geometry = plexusLines.geometry;
+             // Add check if userData exists
+             if (!plexusLines.userData) return;
             const { nodes, regionMinZ, regionMaxZ, regionDepth, threshold, scrollSpeed } = plexusLines.userData;
-             const positions = [];
+             // Check if nodes array exists
+             if (!nodes) return;
+
+            const positions = [];
 
              // Update node positions (simpler vertical drift)
              for (const n of nodes) {
-                n.z += scrollSpeed * 60 * (1/60); // Adjust speed based on expected frame time? Or keep simple.
-                n.y += (Math.random() - 0.5) * 0.5; // Subtle vertical jitter
+                 // Basic check if n is a valid Vector3 object
+                 if (!n || typeof n.z === 'undefined' || typeof n.y === 'undefined') continue;
+
+                 // Simple scroll based on time delta (better than fixed frame rate assumption)
+                 n.z += scrollSpeed; // Simple constant speed, adjust multiplier if needed
+                 n.y += (Math.random() - 0.5) * 0.5; // Subtle vertical jitter
                 if (n.z > regionMaxZ + 100) n.z = regionMinZ - THREE.MathUtils.randFloat(0, 100);
                  // Keep Y within bounds somewhat
                  n.y = THREE.MathUtils.clamp(n.y, -1150, -650);
             }
 
              // Calculate line segments
-            for (let i = 0; i < nodes.length; i++) {
-                for (let j = i + 1; j < nodes.length; j++) {
-                     const distSq = nodes[i].distanceToSquared(nodes[j]); // Use squared distance
-                     if (distSq < threshold * threshold) { // Compare with squared threshold
-                        positions.push(nodes[i].x, nodes[i].y, nodes[i].z);
-                         positions.push(nodes[j].x, nodes[j].y, nodes[j].z);
-                     }
-                }
+             if(nodes.length > 1) { // Need at least 2 nodes to make a line
+                 for (let i = 0; i < nodes.length; i++) {
+                    if(!nodes[i]) continue; // Skip if node is undefined somehow
+                     for (let j = i + 1; j < nodes.length; j++) {
+                         if(!nodes[j]) continue; // Skip if node is undefined
+                         try { // Add try-catch around distance calculation
+                             const distSq = nodes[i].distanceToSquared(nodes[j]); // Use squared distance
+                            if (distSq < threshold * threshold) { // Compare with squared threshold
+                                positions.push(nodes[i].x, nodes[i].y, nodes[i].z);
+                                 positions.push(nodes[j].x, nodes[j].y, nodes[j].z);
+                            }
+                         } catch(e) {
+                            console.warn("Error calculating distance in plexus:", e, nodes[i], nodes[j]);
+                         }
+                    }
+                 }
              }
 
-             geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-             geometry.attributes.position.needsUpdate = true;
+            // Update geometry attributes only if positions array has data
+            if (positions.length > 0 && geometry.setAttribute) {
+                 geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.attributes.position.needsUpdate = true;
+             } else if (geometry.getAttribute('position') && geometry.getAttribute('position').count > 0) {
+                 // If no lines should be drawn, clear the existing buffer
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+                geometry.attributes.position.needsUpdate = true;
+             }
+
              // No need to compute bounding sphere frequently unless scale changes dramatically
              // geometry.computeBoundingSphere();
          }
@@ -1473,6 +1548,7 @@
             const canvas = document.createElement("canvas");
              canvas.width = size; canvas.height = size;
             const ctx = canvas.getContext("2d");
+             if (!ctx) return null; // Handle canvas context failure
             ctx.fillStyle = "#08141E"; // Darker base for code texture
             ctx.fillRect(0, 0, size, size);
              ctx.fillStyle = "rgba(0, 180, 220, 0.5)"; // Adjusted alpha and color
@@ -1495,7 +1571,8 @@
          function createCircuitTexture(size) {
              const canvas = document.createElement("canvas");
              canvas.width = size; canvas.height = size;
-             const ctx = canvas.getContext("2d");
+            const ctx = canvas.getContext("2d");
+             if (!ctx) return null; // Handle canvas context failure
             ctx.fillStyle = "#0A1825"; // Slightly different dark bg for ceiling
              ctx.fillRect(0, 0, size, size);
             const circuitColor = "rgba(0, 204, 255, 0.25)"; // More faded color
@@ -1533,6 +1610,8 @@
             const canvas = document.createElement("canvas");
              canvas.width = 128; canvas.height = 128;
              const ctx = canvas.getContext("2d");
+             if (!ctx) return null; // Handle context failure
+
             ctx.clearRect(0, 0, 128, 128);
 
              // Add a subtle outer glow effect on the canvas itself
@@ -1565,12 +1644,19 @@
 
 
          function updateGlyphs(time) {
+             // Add checks for camera existence
+            if (!camera || !glyphs) return;
+
              const cameraPos = camera.position;
+
              glyphs.forEach(sprite => {
-                 sprite.userData.lifetime += 1 / 60; // Approximate delta time
-                const lifeRatio = sprite.userData.lifetime / sprite.userData.maxLifetime;
-                const fade = Math.sin(lifeRatio * Math.PI); // Smooth fade in/out using sin curve
-                sprite.material.opacity = Math.max(fade, 0) * globalGlyphFade; // Use global fade and sin fade
+                // Check if sprite and its properties are valid
+                if (!sprite || !sprite.userData || !sprite.material || !sprite.position || !sprite.scale) return;
+
+                sprite.userData.lifetime = (sprite.userData.lifetime ?? 0) + 1 / 60; // Approximate delta time, with nullish coalescing for safety
+                 const lifeRatio = sprite.userData.lifetime / (sprite.userData.maxLifetime || 1); // Avoid division by zero/undefined
+                 const fade = Math.sin(Math.min(lifeRatio, 1.0) * Math.PI); // Ensure lifeRatio doesn't exceed 1 for sin curve
+                sprite.material.opacity = Math.max(fade, 0) * (globalGlyphFade || 0); // Use global fade and sin fade
 
                  // Respawn logic
                  if (lifeRatio >= 1.0) {
@@ -1582,64 +1668,77 @@
                      const height = Math.random() * 1800 - 800;
                      const depth = - (CORRIDOR_SIZE * 0.5) - Math.random() * (CORRIDOR_SIZE * 0.5);
                      sprite.position.set(Math.cos(angle) * radius, height, depth);
-                     sprite.userData.basePosition.copy(sprite.position);
-                    sprite.userData.velocity.set(0, 0, 0);
+                    if(sprite.userData.basePosition) sprite.userData.basePosition.copy(sprite.position);
+                     if(sprite.userData.velocity) sprite.userData.velocity.set(0, 0, 0);
                     // Opacity will naturally fade back in via the sin curve and global fade
                 }
 
                 // Base Oscillation (Subtler)
-                const t = time * sprite.userData.oscillationSpeed;
-                const ox = Math.sin(t * 0.8) * 10; // Less X movement
-                const oy = Math.cos(t * 1.2) * 8;  // Less Y movement
-                 sprite.position.x = sprite.userData.basePosition.x + ox;
-                sprite.position.y = sprite.userData.basePosition.y + oy;
+                 if (sprite.userData.basePosition) {
+                     const t = time * (sprite.userData.oscillationSpeed || 0.5);
+                     const ox = Math.sin(t * 0.8) * 10; // Less X movement
+                     const oy = Math.cos(t * 1.2) * 8;  // Less Y movement
+                    sprite.position.x = sprite.userData.basePosition.x + ox;
+                    sprite.position.y = sprite.userData.basePosition.y + oy;
+                 }
 
                 // Mouse Repulsion
-                 // Project sprite world position to screen space (normalized device coords)
-                 const spriteScreenPos = sprite.position.clone().project(camera);
+                 try { // Add try-catch for safety during projection/calculations
+                    // Project sprite world position to screen space (normalized device coords)
+                    const spriteScreenPos = sprite.position.clone().project(camera);
 
-                 // Convert normalized device coords (-1 to 1) to screen coords (0 to width/height)
-                 const glyphScreenX = (spriteScreenPos.x * 0.5 + 0.5) * window.innerWidth;
-                 const glyphScreenY = (-spriteScreenPos.y * 0.5 + 0.5) * window.innerHeight;
-                 const mouseScreenX = (mouse.x * 0.5 + 0.5) * window.innerWidth; // Mouse coords are already -1 to 1
-                 const mouseScreenY = (-mouse.y * 0.5 + 0.5) * window.innerHeight;
+                    // Convert normalized device coords (-1 to 1) to screen coords (0 to width/height)
+                    const glyphScreenX = (spriteScreenPos.x * 0.5 + 0.5) * window.innerWidth;
+                    const glyphScreenY = (-spriteScreenPos.y * 0.5 + 0.5) * window.innerHeight;
+                    const mouseScreenX = (mouse.x * 0.5 + 0.5) * window.innerWidth; // Mouse coords are already -1 to 1
+                    const mouseScreenY = (-mouse.y * 0.5 + 0.5) * window.innerHeight;
 
-                const dist = Math.hypot(glyphScreenX - mouseScreenX, glyphScreenY - mouseScreenY);
-                let pushX = 0, pushY = 0;
+                    const dist = Math.hypot(glyphScreenX - mouseScreenX, glyphScreenY - mouseScreenY);
+                    let pushX = 0, pushY = 0;
 
-                 if (dist < repulsionDistance && dist > 1) { // Add minimum distance to avoid division by zero/extreme force
-                     const dx = glyphScreenX - mouseScreenX;
-                     const dy = glyphScreenY - mouseScreenY;
-                     const angle = Math.atan2(dy, dx);
-                     // Force diminishes with distance (1 / dist or 1 / dist^2)
-                     const force = (repulsionDistance / dist - 1) * repulsionForce * 0.5; // Adjusted force calculation
-                     pushX = Math.cos(angle) * force;
-                     pushY = Math.sin(angle) * force;
-                }
+                    if (dist < repulsionDistance && dist > 1) { // Add minimum distance to avoid division by zero/extreme force
+                        const dx = glyphScreenX - mouseScreenX;
+                        const dy = glyphScreenY - mouseScreenY;
+                        const angle = Math.atan2(dy, dx);
+                         // Force diminishes with distance (1 / dist or 1 / dist^2)
+                        const force = (repulsionDistance / dist - 1) * repulsionForce * 0.5; // Adjusted force calculation
+                        pushX = Math.cos(angle) * force;
+                         pushY = Math.sin(angle) * force;
+                    }
 
-                 // Apply velocity in world space (needs care - mapping screen push to world velocity)
-                 // This is a simplified approach: applying push directly to velocity, assumes uniform depth scaling somewhat.
-                 sprite.userData.velocity.x += pushX * 0.1; // Scale down screen push for world velocity
-                 sprite.userData.velocity.y += pushY * 0.1;
+                    // Apply velocity in world space (needs care - mapping screen push to world velocity)
+                    // This is a simplified approach: applying push directly to velocity, assumes uniform depth scaling somewhat.
+                    if(sprite.userData.velocity){
+                        sprite.userData.velocity.x = (sprite.userData.velocity.x || 0) + pushX * 0.1; // Scale down screen push for world velocity
+                        sprite.userData.velocity.y = (sprite.userData.velocity.y || 0) + pushY * 0.1;
 
-                 // Apply Friction & Update Position
-                 sprite.userData.velocity.multiplyScalar(friction);
-                 sprite.position.addScaledVector(sprite.userData.velocity, 0.1); // Apply scaled velocity
+                        // Apply Friction & Update Position
+                        sprite.userData.velocity.multiplyScalar(friction);
+                        sprite.position.addScaledVector(sprite.userData.velocity, 0.1); // Apply scaled velocity
+                     }
+                 } catch (e) {
+                    console.warn("Error during glyph projection/repulsion:", e, sprite);
+                 }
 
                  // --- Size Attenuation based on Distance ---
-                 const d = cameraPos.distanceTo(sprite.position);
-                const minDist = 300, maxDist = 2500; // Adjusted range for scaling
-                const scaleClose = 280, scaleFar = 140; // Adjusted sprite sizes
+                 try { // Add try-catch for distance/scale calculation
+                     const d = cameraPos.distanceTo(sprite.position);
+                     const minDist = 300, maxDist = 2500; // Adjusted range for scaling
+                    const scaleClose = 280, scaleFar = 140; // Adjusted sprite sizes
 
-                 const clampDist = THREE.MathUtils.clamp(d, minDist, maxDist);
-                 // Use smoother step or inverse square for scaling? Linear is simple.
-                const alpha = (clampDist - minDist) / (maxDist - minDist);
-                 const finalScale = THREE.MathUtils.lerp(scaleClose, scaleFar, alpha);
-                 sprite.scale.set(finalScale, finalScale, 1);
-             });
+                    const clampDist = THREE.MathUtils.clamp(d, minDist, maxDist);
+                     // Use smoother step or inverse square for scaling? Linear is simple.
+                    const alpha = (clampDist - minDist) / (maxDist - minDist);
+                     const finalScale = THREE.MathUtils.lerp(scaleClose, scaleFar, alpha);
+                    sprite.scale.set(finalScale, finalScale, 1);
+                } catch (e) {
+                    console.warn("Error during glyph scaling:", e, sprite);
+                }
+            });
          }
 
          function spawnGlyphOnWall(sprite) { // Optional alternative spawn logic
+             if (!sprite || !sprite.position) return; // Basic check
             const wallDistX = CORRIDOR_SIZE / 2 - 50; // X distance for walls
             const heightRange = 1600;
             const heightOffset = -600;
@@ -1657,12 +1756,14 @@
 
 
         function onWindowResize() {
+             if (!camera || !renderer) return; // Check if objects exist
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
          }
 
          function onDocumentMouseMove(event) {
+             // mouse object should always exist if declared globally
              mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
              mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
