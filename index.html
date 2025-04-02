@@ -4,40 +4,64 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Futuristic Player Stats</title>
+  <!-- Optional: Import a futuristic font -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* BODY + BACKGROUND */
-    body {
+    /* Basic Reset */
+    * {
       margin: 0;
       padding: 0;
-      /* Futuristic gradient background */
-      background: linear-gradient(115deg, #0cc 0%, #0af 100%);
-      font-family: "Orbitron", sans-serif; /* Orbitron is a free Google Font you can import if you like */
-      color: #fff;
-      overflow: hidden; /* So floating symbols remain in place */
-      position: relative;
+      box-sizing: border-box;
     }
 
-    /* FLOATING SYMBOLS CONTAINER */
+    /* BODY BACKGROUND */
+    body {
+      position: relative;
+      font-family: 'Orbitron', sans-serif;
+      color: #fff;
+      /* Ethereal gradient background */
+      background: linear-gradient(115deg, #0cc, #0af);
+      overflow: hidden;
+    }
+
+    /* ANIMUS LINES OVERLAY */
+    .animus-lines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 200%;
+      height: 200%;
+      /* This repeating gradient creates blue lines at a 120° angle */
+      background: repeating-linear-gradient(
+        120deg,
+        transparent,
+        transparent 30px,
+        rgba(0, 255, 255, 0.15) 30px,
+        rgba(0, 255, 255, 0.15) 31px
+      );
+      /* Translate and rotate to give a 3D perspective feel */
+      transform: translate(-25%, -25%) rotate(-15deg);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* FLOATING SYMBOLS */
     .floating-symbols {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      pointer-events: none; /* So clicks pass through to your nav/content */
-      overflow: hidden;
+      pointer-events: none;
       z-index: 1;
+      overflow: hidden;
     }
-
-    /* Each symbol that floats around */
     .symbol {
       position: absolute;
-      color: rgba(255, 255, 255, 0.2); /* Slightly transparent white */
+      color: rgba(255, 255, 255, 0.2);
       font-size: 2rem;
       animation: float 12s linear infinite;
     }
-
-    /* Keyframes for floating effect (bottom to top) */
     @keyframes float {
       0% {
         transform: translateY(110vh);
@@ -56,15 +80,14 @@
     nav {
       display: flex;
       justify-content: center;
-      background: rgba(0, 0, 0, 0.4); /* Slightly dark overlay for contrast */
+      background: rgba(0, 0, 0, 0.4);
       padding: 10px;
       position: fixed;
       top: 0;
       width: 100%;
-      z-index: 1002; /* Above the floating symbols */
-      box-shadow: 0 0 10px #0ff; /* Glow effect around nav */
+      z-index: 1002;
+      box-shadow: 0 0 10px #0ff;
     }
-
     nav button {
       background: rgba(0, 255, 255, 0.1);
       border: 1px solid #0ff;
@@ -72,13 +95,12 @@
       margin: 0 10px;
       padding: 10px 20px;
       cursor: pointer;
-      font-family: 'Orbitron', sans-serif;
       text-transform: uppercase;
       letter-spacing: 1px;
       box-shadow: 0 0 10px #0ff, inset 0 0 10px #0ff;
       transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+      font-family: 'Orbitron', sans-serif;
     }
-
     nav button:hover,
     nav button.active {
       background: rgba(0, 255, 255, 0.3);
@@ -89,11 +111,11 @@
     /* CONTENT SECTIONS */
     .content-section {
       display: none;
-      padding: 100px 20px 20px 20px; /* Leave room for nav */
+      padding: 100px 20px 20px 20px;
       min-height: 100vh;
       transition: opacity 0.5s ease, transform 0.5s ease;
-      z-index: 2; /* Above the floating symbols */
       position: relative;
+      z-index: 2;
     }
     .active-section {
       display: block;
@@ -104,16 +126,13 @@
       opacity: 0;
       transform: translateX(-20px);
     }
-
-    /* NEON BORDER UTILITY */
     .neon-border {
       border: 2px solid #0ff;
       box-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0ff;
       padding: 20px;
       margin: 10px 0;
     }
-
-    /* MAP CONTAINER */
+    /* Map Container */
     #map-container {
       width: 100%;
       height: 400px;
@@ -132,24 +151,29 @@
 </head>
 <body>
 
-  <!-- FLOATING SYMBOLS -->
+  <!-- Animus Perspective Lines -->
+  <div class="animus-lines"></div>
+
+  <!-- Floating Symbols (More added for extra effect) -->
   <div class="floating-symbols">
-    <!-- 
-      You can add more or fewer symbols. 
-      Each one can have a random left position & animation delay to scatter them.
-    -->
-    <span class="symbol" style="left: 10%; animation-delay: 0s;">Λ</span>
-    <span class="symbol" style="left: 30%; animation-delay: 2s;">φ</span>
-    <span class="symbol" style="left: 50%; animation-delay: 4s;">Δ</span>
-    <span class="symbol" style="left: 70%; animation-delay: 6s;">Ξ</span>
-    <span class="symbol" style="left: 90%; animation-delay: 8s;">Ω</span>
-    <span class="symbol" style="left: 20%; animation-delay: 3s;">σ</span>
-    <span class="symbol" style="left: 40%; animation-delay: 5s;">ψ</span>
-    <span class="symbol" style="left: 60%; animation-delay: 7s;">Ξ</span>
-    <span class="symbol" style="left: 80%; animation-delay: 9s;">μ</span>
+    <span class="symbol" style="left: 5%; font-size: 1.5rem; animation-delay: 0s;">Λ</span>
+    <span class="symbol" style="left: 15%; font-size: 2rem; animation-delay: 1s;">φ</span>
+    <span class="symbol" style="left: 25%; font-size: 1.8rem; animation-delay: 2s;">Δ</span>
+    <span class="symbol" style="left: 35%; font-size: 1.2rem; animation-delay: 3s;">Ξ</span>
+    <span class="symbol" style="left: 45%; font-size: 2.2rem; animation-delay: 4s;">Ω</span>
+    <span class="symbol" style="left: 55%; font-size: 1.5rem; animation-delay: 5s;">σ</span>
+    <span class="symbol" style="left: 65%; font-size: 1.8rem; animation-delay: 6s;">ψ</span>
+    <span class="symbol" style="left: 75%; font-size: 1.2rem; animation-delay: 7s;">Ξ</span>
+    <span class="symbol" style="left: 85%; font-size: 2rem; animation-delay: 8s;">μ</span>
+    <span class="symbol" style="left: 10%; font-size: 1.3rem; animation-delay: 3s;">Σ</span>
+    <span class="symbol" style="left: 20%; font-size: 1.7rem; animation-delay: 4s;">Π</span>
+    <span class="symbol" style="left: 30%; font-size: 1.4rem; animation-delay: 5s;">Θ</span>
+    <span class="symbol" style="left: 40%; font-size: 1.9rem; animation-delay: 6s;">β</span>
+    <span class="symbol" style="left: 50%; font-size: 1.6rem; animation-delay: 7s;">λ</span>
+    <span class="symbol" style="left: 60%; font-size: 1.3rem; animation-delay: 8s;">δ</span>
   </div>
 
-  <!-- NAVIGATION -->
+  <!-- Navigation Bar -->
   <nav>
     <button data-section="inventory" class="active">Inventory</button>
     <button data-section="map">Map</button>
@@ -158,7 +182,7 @@
     <button data-section="scanner">Scanner</button>
   </nav>
 
-  <!-- CONTENT SECTIONS -->
+  <!-- Content Sections -->
   <div id="inventory" class="content-section active-section">
     <h1>Inventory</h1>
     <p>This is the Inventory area. You can add details later.</p>
@@ -167,7 +191,6 @@
   <div id="map" class="content-section">
     <h1>Map</h1>
     <div id="map-container" class="neon-border">
-      <!-- Placeholder area for a zoomable map image -->
       <p style="text-align: center; padding-top: 180px; color: #0ff;">Zoomable map will appear here</p>
     </div>
   </div>
@@ -187,7 +210,7 @@
     <p>This is the Scanner area. Add your content later.</p>
   </div>
 
-  <!-- SCRIPT FOR PAGE SWITCHING -->
+  <!-- JavaScript for Section Switching -->
   <script>
     const buttons = document.querySelectorAll('nav button');
     const sections = document.querySelectorAll('.content-section');
@@ -218,7 +241,6 @@
       });
     }
 
-    // Event listener for each nav button
     buttons.forEach(button => {
       button.addEventListener('click', () => {
         const sectionId = button.getAttribute('data-section');
@@ -226,7 +248,6 @@
       });
     });
 
-    // Initial display setup
     window.addEventListener('DOMContentLoaded', () => {
       sections.forEach(section => {
         if (!section.classList.contains('active-section')) {
