@@ -165,7 +165,7 @@
 
         /* ===== Main Content ===== */
         #mainContent {
-            display: block;
+            display: block; /* Keep it block, control visibility with opacity/transform */
             opacity: 0;
             transform: translateY(20px); /* Start slightly down */
             transition: opacity 1.5s ease-out, transform 1.5s ease-out;
@@ -190,7 +190,9 @@
             opacity: 0;
             /* Starts animating after mainContent becomes visible */
             animation: introAnim 3.5s forwards ease-out; /* Slightly longer */
-            animation-delay: 1.0s; /* Delay more to sync better with mainContent appearance */
+            /* Delay syncs with mainContent transition + delay (0.3 + 1.5 = 1.8s approx start) */
+            /* Let's make it start a bit sooner than nav */
+            animation-delay: 1.0s;
         }
 
         @keyframes introAnim { /* Refined easing and scale */
@@ -209,6 +211,7 @@
             100% {
                 opacity: 0;
                 transform: translate(-50%, -50%) scale(0.9);
+                 pointer-events: none; /* Make sure it's not clickable after fading */
             }
         }
 
@@ -230,7 +233,8 @@
             transform: translateY(-30px); /* Start further up */
             /* Animation starts after intro message begins fading out */
             animation: navFadeSlideIn 1.2s forwards ease-out;
-            animation-delay: 3.0s; /* Matches approx end of introMessage hold */
+            /* Delay should account for intro message hold time */
+            animation-delay: 3.0s; /* Delay from page load (adjust if intro anim timing changes) */
         }
 
         @keyframes navFadeSlideIn {
@@ -263,13 +267,13 @@
             animation: buttonFadeSlideIn 0.8s forwards ease-out;
         }
 
-        /* Staggered Delays for Nav Buttons (Relative to Nav Fade-In) */
-        nav button[data-section="inventory"] { animation-delay: 3.2s; }
-        nav button[data-section="map"]       { animation-delay: 3.35s; }
-        nav button[data-section="email"]     { animation-delay: 3.5s; }
-        nav button[data-section="codex"]     { animation-delay: 3.65s; }
-        nav button[data-section="scanner"]   { animation-delay: 3.8s; }
-        nav button[data-section="vitals"]    { animation-delay: 3.95s; }
+        /* Staggered Delays for Nav Buttons (Relative to Nav Fade-In Start) */
+        nav button[data-section="inventory"] { animation-delay: 3.2s; } /* nav delay + 0.2s */
+        nav button[data-section="map"]       { animation-delay: 3.35s; }/* nav delay + 0.35s */
+        nav button[data-section="email"]     { animation-delay: 3.5s; } /* nav delay + 0.5s */
+        nav button[data-section="codex"]     { animation-delay: 3.65s; }/* nav delay + 0.65s */
+        nav button[data-section="scanner"]   { animation-delay: 3.8s; } /* nav delay + 0.8s */
+        nav button[data-section="vitals"]    { animation-delay: 3.95s; }/* nav delay + 0.95s */
 
         @keyframes buttonFadeSlideIn {
             from {
@@ -321,7 +325,7 @@
             box-shadow: 0 0 25px rgba(0, 204, 255, 0.25);
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: hidden; /* Changed from visible to hidden */
         }
 
         .content-card.active {
@@ -412,26 +416,28 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) scale(0.98);
-            z-index: 150;
+            z-index: 150; /* Ensure inventory is above standard content cards if overlapping */
              width: 850px; /* Slightly wider */
-             height: 600px; /* Match other panels */
+             height: 600px; /* Match other panels height better */
+             max-height: 70vh; /* Add max height */
              padding: 20px;
              background: var(--panel-bg);
              backdrop-filter: blur(12px);
              border: 2px solid var(--border-color);
              border-radius: 15px;
              box-shadow: 0 0 25px rgba(0, 204, 255, 0.25);
-             display: flex; /* Changed from none to flex by JS */
+             display: none; /* Start hidden with display: none */
              flex-direction: row;
              gap: 25px; /* More gap */
              opacity: 0;
              pointer-events: none;
             transition: opacity 0.5s ease-out, transform 0.5s ease-out;
             /* Will also use panelActivate and panelPulse via active class */
+            overflow: hidden; /* Added overflow hidden */
         }
 
         #inventoryContainer.active {
-            display: flex;
+            display: flex; /* Change display to flex when active */
             opacity: 1;
             pointer-events: auto;
             animation: panelActivate 0.5s ease-out forwards, panelPulse 0.6s ease-out forwards;
@@ -701,7 +707,7 @@
         #emailContent .email-body {
             font-size: 1em; /* Larger body text */
             line-height: 1.7; /* More spacing */
-             white-space: pre-wrap;
+             white-space: pre-wrap; /* Preserve line breaks from data */
             color: var(--text-color); /* Ensure uses standard text color */
             padding-bottom: 20px;
          }
@@ -822,32 +828,31 @@
             </div>
         </div>
 
-        <!-- ===== New Inventory Container ===== -->
+        <!-- ===== New Inventory Container (starts display:none) ===== -->
         <div id="inventoryContainer">
             <div class="inventory-grid">
                  <!-- Slots will be populated / updated by JS -->
-                 <!-- Example with placeholder -->
-                 <div class="inventory-slot" data-itemid="health_potion_1"><img src="placeholder.png" alt="Item"></div>
-                 <div class="inventory-slot" data-itemid="keycard_alpha"><img src="placeholder.png" alt="Item"></div>
-                 <!-- More empty slots -->
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
-                 <div class="inventory-slot"><img src="placeholder.png" alt=""></div>
+                 <!-- Example structure (content set by JS) -->
+                 <div class="inventory-slot" data-itemid="health_potion_1"><img src="" alt=""></div>
+                 <div class="inventory-slot" data-itemid="keycard_alpha"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
+                 <div class="inventory-slot"><img src="" alt=""></div>
              </div>
             <div class="item-info">
                 <div class="item-details">
@@ -870,10 +875,10 @@
         const navButtons = document.querySelectorAll("nav button[data-section]");
         const contentCards = document.querySelectorAll("#contentWrapper .content-card");
         const inventoryContainer = document.getElementById("inventoryContainer");
-         const inventoryGrid = document.querySelector(".inventory-grid"); // Get grid parent
-         // Select slots dynamically later or ensure they exist initially
+        const inventoryGrid = document.querySelector(".inventory-grid"); // Get grid parent
+        // Select slots dynamically later or ensure they exist initially
         let inventorySlots; // Will be populated after generating placeholders
-         const itemInfoTitle = document.getElementById("itemInfoTitle");
+        const itemInfoTitle = document.getElementById("itemInfoTitle");
         const itemInfoDesc = document.getElementById("itemInfoDesc");
         const itemUseButton = document.getElementById("itemUseButton");
         const itemDropButton = document.getElementById("itemDropButton");
@@ -886,21 +891,27 @@
         const emailDateEl = document.getElementById("emailDate");
         const emailBodyEl = document.getElementById("emailBody");
         let loadingStartTime;
-         let selectedSlot = null; // Track selected inventory slot
+        let selectedSlot = null; // Track selected inventory slot
 
         // ----- Dummy Data -----
+        // Added placeholder URLs/names for SVG for demonstration
+        // In a real scenario, these paths would point to actual files
         const inventoryItems = {
-            "health_potion_1": { name: "Medi-Gel Injector", description: "Automated injector containing concentrated regenerative nano-solution. Effective on moderate tissue trauma. Auto-disposes after use.", usable: true, img: "medi_gel.svg" }, // Example using SVG
-             "keycard_alpha": { name: "Access Credential: Sector Alpha", description: "Standard issue clearance chip embedded in polymer substrate. Grants level 1 access within designated Alpha Sector zones.", usable: false, img: "keycard.svg" },
-             // Add more items
-         };
+            "health_potion_1": { name: "Medi-Gel Injector", description: "Automated injector containing concentrated regenerative nano-solution. Effective on moderate tissue trauma. Auto-disposes after use.", usable: true, img: "medi_gel.svg" }, // Example path
+            "keycard_alpha": { name: "Access Credential: Sector Alpha", description: "Standard issue clearance chip embedded in polymer substrate. Grants level 1 access within designated Alpha Sector zones.", usable: false, img: "keycard.svg" }, // Example path
+            // Add more items
+        };
         const emails = [{ id: 1, sender: "SysCore AI", subject: ":: Corridor Sync Established ::", date: "Cycle 34.1 REV 8", body: "Unit Designate: VST-VYN [Vesta]\n\nConfirmed connection to the Animus Corridor Simulation construct.\nBio-Neural Interface: STABLE\nCore Systems: NOMINAL [Confidence: 99.8%]\n\nData Codex access granted. Safety protocols engaged.\nReport detected spatio-temporal anomalies via secure comms channel immediately.\n\n++ SysCore Operational Branch ++", read: false }, { id: 2, sender: "Supply Chain AI [QM-7 Designation]", subject: "Equipment Dispatch Confirmation", date: "Cycle 34.0 REV 5", body: "Recipient: V. Vyntarion (VST-VYN)\n\nStandard Issue Loadout dispatched to designated access point:\n- Integrated Sidearm Unit [Check Scanner Interface]\n- Medi-Gel Injector x2\n- Access Credential: Sector Alpha x1\n\nInventory verification requested upon retrieval.\n\n-- QM-7 Logistical Matrix --", read: false }, { id: 3, sender: "Automated Hazard Monitor", subject: "ALERT: Unstable Energy Signature - Sector Gamma", date: "Cycle 33.9 REV 12", body: "PRIORITY ALERT ::\n\nUnidentified high-energy resonance pattern detected.\nOrigin Point: Sector Gamma / Grid Reference 7G-Delta-9.\nMagnitude exceeds standard variance thresholds by 4 sigmas.\nPhenomenon signature inconsistent with known subspace events.\n\nACTION: Avoid designated zone. Hazard Containment Team en route.\n\nRECORD ID: AE-8873-G-HIGH", read: true }, { id: 4, sender: "Dr. Aris Thorne [Secured Channel]", subject: "Query Follow-up // Urgent Data Request", date: "Cycle 33.8 REV 2", body: "Vesta,\n\nThe chroniton field flux patterns you logged... they defy current models. My quantum simulations are producing paradoxical outcomes, pointing towards an external 'observer' effect or a causal loop. Cannot confirm without hard data.\n\nYour scanner array is key. Focus on *any* anomalous energy readings, particularly those exhibiting temporal shear or non-linear decay signatures. Log everything and transmit directly via this secured channel ONLY. Designate Priority Alpha.\n\nMaintain vigilance. This research is critical.\n\n// Aris //", read: false }, ];
 
          // ----- Initial Setup -----
          document.addEventListener('DOMContentLoaded', () => {
              // Trigger login panel fade-in after a short delay
              setTimeout(() => {
-                 loginPanel.classList.add('visible');
+                 if (loginPanel) { // Check if element exists
+                     loginPanel.classList.add('visible');
+                 } else {
+                    console.error("Login panel not found!");
+                 }
              }, 300); // Small delay for boot effect
 
             setupInventoryPlaceholders();
@@ -909,125 +920,156 @@
 
 
          // ----- Login Handling -----
-         loginButton.addEventListener("click", function() {
-             const username = document.getElementById("username").value.trim();
-             const passcode = document.getElementById("passcode").value.trim();
-             if (username && passcode) {
-                 loginPanel.classList.add("hidden");
-                 loginPanel.addEventListener('transitionend', () => {
-                     loginPanel.style.display = "none";
-                     mainContent.classList.add("visible"); // Triggers its animation
-                    loadingStartTime = Date.now() * 0.001;
-                     if (typeof THREE !== 'undefined') { // Check if Three.js loaded
-                         console.log("Three.js loaded, initializing scene...");
-                         initThreeJS();
-                         animateThreeJS();
-                     } else {
-                         console.error("Three.js failed to load.");
-                         // Optionally show an error message to the user
-                         alert("Error: Background visualization library failed to load.")
-                     }
-                }, { once: true });
+        loginButton.addEventListener("click", function() {
+            const usernameInput = document.getElementById("username");
+            const passcodeInut = document.getElementById("passcode");
+            // Basic check if inputs exist before getting value
+            const username = usernameInput ? usernameInput.value.trim() : "";
+            const passcode = passcodeInut ? passcodeInut.value.trim() : "";
+
+            if (username && passcode) {
+                if (loginPanel) {
+                    loginPanel.classList.add("hidden");
+                }
+                 // <<< FIX: Start showing mainContent immediately >>>
+                if (mainContent) {
+                     mainContent.classList.add("visible"); // Make main content start its transition
+                 } else {
+                    console.error("Main content container not found!");
+                    return; // Stop if main content is missing
+                 }
+
+                if (loginPanel) {
+                    // Still hide the login panel completely after its transition for performance
+                     loginPanel.addEventListener('transitionend', () => {
+                         loginPanel.style.display = "none";
+                     }, { once: true });
+                }
+
+                // Start background animation timing
+                loadingStartTime = Date.now() * 0.001;
+                if (typeof THREE !== 'undefined') { // Check if Three.js loaded
+                    console.log("Three.js loaded, initializing scene...");
+                    initThreeJS();
+                    animateThreeJS();
+                } else {
+                    console.error("Three.js failed to load.");
+                    alert("Error: Background visualization library failed to load.")
+                }
             } else {
                 alert("Access denied. Valid credentials required.");
-                // Optional: Add visual feedback like shaking the login panel
             }
-         });
+        });
+
 
         // ----- Navigation & Panel Switching Logic -----
         navButtons.forEach(btn => {
             btn.addEventListener("click", () => {
                 const section = btn.getAttribute("data-section");
-                 let currentlyActive = document.querySelector('.content-card.active, #inventoryContainer.active');
+                let currentlyActive = document.querySelector('.content-card.active, #inventoryContainer.active');
                 let buttonActive = document.querySelector('nav button.active');
 
-                 // If clicking the already active button, close the panel
-                 if (buttonActive === btn && currentlyActive) {
-                     currentlyActive.classList.remove('active');
-                     btn.classList.remove('active');
-                      resetItemInfo(); // Reset inventory info if closing
-                      resetEmailContent(); // Reset email if closing
-                      selectedSlot?.classList.remove('selected'); // Deselect inventory item
-                     selectedSlot = null;
-                      return; // Stop further processing
-                 }
+                // If clicking the already active button, close the panel
+                if (buttonActive === btn && currentlyActive) {
+                    currentlyActive.classList.remove('active');
+                    btn.classList.remove('active');
+                    resetItemInfo(); // Reset inventory info if closing
+                    resetEmailContent(); // Reset email if closing
+                    if (selectedSlot) { // Check if selectedSlot is not null
+                        selectedSlot.classList.remove('selected'); // Deselect inventory item
+                    }
+                    selectedSlot = null;
+                    return; // Stop further processing
+                }
 
-
-                 // Deactivate all buttons and panels first
-                 navButtons.forEach(b => b.classList.remove("active"));
-                 contentCards.forEach(card => card.classList.remove("active"));
-                inventoryContainer.classList.remove("active");
+                // Deactivate all buttons and panels first
+                navButtons.forEach(b => b.classList.remove("active"));
+                contentCards.forEach(card => card.classList.remove("active"));
+                if (inventoryContainer) { // Check if exists
+                    inventoryContainer.classList.remove("active");
+                }
 
                 // Activate the clicked button
                 btn.classList.add("active");
 
-                 // Reset states before showing new panel
+                // Reset states before showing new panel
                 resetItemInfo(); // Reset inventory info
                 resetEmailContent(); // Reset email info
+                if (selectedSlot) { // Deselect previous item visually
+                    selectedSlot.classList.remove('selected');
+                    selectedSlot = null;
+                }
 
                 // Show the correct panel
                 if (section === "inventory") {
-                    inventoryContainer.classList.add("active");
-                 } else {
-                     const targetCard = document.getElementById(section);
-                     if (targetCard) {
-                         targetCard.classList.add("active");
-                         if (section === "email") {
-                             populateEmailList();
-                             resetEmailContent(); // Ensure placeholder shows first
+                    if (inventoryContainer) { // Check if exists
+                        inventoryContainer.classList.add("active");
+                    } else {
+                        console.error("Inventory container not found!");
+                    }
+                } else {
+                    const targetCard = document.getElementById(section);
+                    if (targetCard) {
+                        targetCard.classList.add("active");
+                        if (section === "email") {
+                            populateEmailList();
+                            resetEmailContent(); // Ensure placeholder shows first
                         }
+                    } else {
+                        console.error(`Content card with ID "${section}" not found!`);
                     }
                 }
             });
-         });
+        });
 
          // ----- Inventory Interaction Logic -----
          function setupInventoryPlaceholders() {
+             if (!inventoryGrid) return; // Ensure grid exists
+
              const slots = inventoryGrid.querySelectorAll(".inventory-slot");
              slots.forEach(slot => {
                  const img = slot.querySelector('img');
+                 if (!img) return; // Skip if slot has no img element
+
                  const itemId = slot.getAttribute('data-itemid');
-                 let itemImageSrc = 'placeholder'; // Default to placeholder logic
+                 let itemImageSrc = ''; // Default to empty
 
-                if (itemId && inventoryItems[itemId] && inventoryItems[itemId].img) {
-                     // Use defined image if available (could be SVG name or path)
-                     // Assuming SVG for now - replace logic if using png paths
-                    // Example: If inventoryItems[itemId].img is "keycard.svg", set src directly
-                    // img.src = inventoryItems[itemId].img;
-                     // For demo, we still use placeholders but could load real assets here
-                     itemImageSrc = inventoryItems[itemId].img; // Use actual defined source
+                 if (itemId && inventoryItems[itemId] && inventoryItems[itemId].img) {
+                     // Use defined image if available
+                     // *** IMPORTANT: Replace with actual path logic if needed ***
+                     // For this demo, we assume the 'img' value is just the filename
+                     // and we won't actually load it, just set alt text.
+                     itemImageSrc = inventoryItems[itemId].img; // Keep track of intended image
                      img.alt = inventoryItems[itemId].name;
-                 }
-
-                 // Only generate SVG placeholder if no specific item image is intended OR the src is placeholder.png/empty
-                 // Modify this condition if you load actual image paths above
-                if (!img || img.src.includes('placeholder.png') || img.src === '') {
-                     // Generate placeholder only if no real image set/found
-                    const placeholderSvg = `
+                     img.src = itemImageSrc; // Try setting the src (will likely fail without real paths)
+                     img.style.opacity = "1"; // Assume real image is opaque
+                 } else {
+                     // Generate placeholder SVG for empty slots or items without defined images
+                     const placeholderSvg = `
                         <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 100 100">
-                             <rect width="100" height="100" fill="rgba(0,204,255,0.02)"/> // Very faint bg
-                            <circle cx="50" cy="50" r="35" fill="none" stroke="rgba(0,204,255,0.2)" stroke-width="3" stroke-dasharray="10 5"/> // Dashed circle
-                             <line x1="30" y1="50" x2="70" y2="50" stroke="rgba(0,204,255,0.15)" stroke-width="3"/> // Center line H
-                             <line x1="50" y1="30" x2="50" y2="70" stroke="rgba(0,204,255,0.15)" stroke-width="3"/> // Center line V
+                             <rect width="100" height="100" fill="rgba(0,204,255,0.02)"/>
+                            <circle cx="50" cy="50" r="35" fill="none" stroke="rgba(0,204,255,0.2)" stroke-width="3" stroke-dasharray="10 5"/>
+                             <line x1="30" y1="50" x2="70" y2="50" stroke="rgba(0,204,255,0.15)" stroke-width="3"/>
+                             <line x1="50" y1="30" x2="50" y2="70" stroke="rgba(0,204,255,0.15)" stroke-width="3"/>
                          </svg>`;
-                    if (img) {
-                         img.src = `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
-                        img.style.opacity = "0.4"; // Make placeholder less prominent
-                        img.alt = "Empty Slot";
-                    }
-                 } else if (img) {
-                    // If using real images, ensure styling is appropriate
-                    img.style.opacity = "1";
+                     img.src = `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
+                     img.style.opacity = "0.4"; // Make placeholder less prominent
+                     img.alt = "Empty Slot";
                  }
-            });
-            // Re-select slots after potential changes
-            inventorySlots = inventoryGrid.querySelectorAll(".inventory-slot");
-        }
+             });
+             // Re-select slots after potential changes
+             inventorySlots = inventoryGrid.querySelectorAll(".inventory-slot");
+         }
 
         function addInventoryEventListeners() {
             if (!inventorySlots) {
                 console.warn("Inventory slots not ready for event listeners.");
-                return; // Guard if slots aren't ready
+                setupInventoryPlaceholders(); // Try setting up again just in case
+                inventorySlots = inventoryGrid ? inventoryGrid.querySelectorAll(".inventory-slot") : []; // Re-select
+                if (!inventorySlots || inventorySlots.length === 0) {
+                    console.error("Failed to find inventory slots after setup attempt.");
+                    return;
+                }
              }
 
              inventorySlots.forEach(slot => {
@@ -1036,35 +1078,41 @@
                  });
              });
 
-             // Item action buttons
-            itemUseButton.addEventListener("click", handleItemUse);
-            itemDropButton.addEventListener("click", handleItemDrop);
+             // Item action buttons (check if they exist)
+             if (itemUseButton) {
+                 itemUseButton.addEventListener("click", handleItemUse);
+             }
+             if (itemDropButton) {
+                itemDropButton.addEventListener("click", handleItemDrop);
+             }
          }
 
          function handleInventorySlotClick(slot) {
+            if (!slot) return; // Safety check
             const itemId = slot.getAttribute("data-itemid");
 
              // Deselect previous slot
-            if (selectedSlot) {
+            if (selectedSlot && selectedSlot !== slot) { // Check it's not the same slot
                 selectedSlot.classList.remove("selected");
              }
+
              // Reset info panel first
             resetItemInfo(false); // Don't set placeholder text yet
 
              if (itemId && inventoryItems[itemId]) {
                 const item = inventoryItems[itemId];
-                 itemInfoTitle.textContent = item.name;
-                itemInfoDesc.textContent = item.description;
-                itemUseButton.disabled = !item.usable;
-                itemDropButton.disabled = false;
+                if (itemInfoTitle) itemInfoTitle.textContent = item.name;
+                if (itemInfoDesc) itemInfoDesc.textContent = item.description;
+                if (itemUseButton) itemUseButton.disabled = !item.usable;
+                if (itemDropButton) itemDropButton.disabled = false;
                 slot.classList.add("selected");
                 selectedSlot = slot;
              } else {
                  // Empty slot selected
-                 itemInfoTitle.textContent = "Empty Slot Designation"; // Updated text
-                 itemInfoDesc.textContent = "No object detected in this grid coordinate."; // Updated text
-                 itemUseButton.disabled = true;
-                 itemDropButton.disabled = true;
+                 if (itemInfoTitle) itemInfoTitle.textContent = "Empty Slot Designation";
+                 if (itemInfoDesc) itemInfoDesc.textContent = "No object detected in this grid coordinate.";
+                 if (itemUseButton) itemUseButton.disabled = true;
+                 if (itemDropButton) itemDropButton.disabled = true;
                  slot.classList.add("selected"); // Still visually select the empty slot
                  selectedSlot = slot;
              }
@@ -1072,7 +1120,7 @@
 
 
          function handleItemUse() {
-             if (selectedSlot && !itemUseButton.disabled) {
+             if (selectedSlot && itemUseButton && !itemUseButton.disabled) {
                  const itemId = selectedSlot.getAttribute("data-itemid");
                  if (itemId && inventoryItems[itemId]) {
                     console.log(`Attempting to use: ${inventoryItems[itemId].name}`); // Log action
@@ -1084,9 +1132,9 @@
          }
 
          function handleItemDrop() {
-             if (selectedSlot && !itemDropButton.disabled) {
+             if (selectedSlot && itemDropButton && !itemDropButton.disabled) {
                 const itemId = selectedSlot.getAttribute("data-itemid");
-                 const itemName = itemId ? inventoryItems[itemId].name : "the empty slot data";
+                 const itemName = (itemId && inventoryItems[itemId]) ? inventoryItems[itemId].name : "the empty slot data";
                  if (confirm(`Confirm jettison command for: ${itemName}? This action is irreversible.`)) {
                      console.log(`Attempting to drop: ${itemName}`); // Log action
                      alert(`Jettisoned ${itemName}.`);
@@ -1104,6 +1152,7 @@
          }
 
         function removeItemFromSlot(slot) {
+            if (!slot) return; // Safety check
             slot.removeAttribute("data-itemid");
             const img = slot.querySelector('img');
             if (img) { // Replace image with placeholder SVG
@@ -1121,19 +1170,21 @@
 
         function resetItemInfo(showPlaceholderText = true) {
             if(showPlaceholderText) {
-                 itemInfoTitle.textContent = "Analysis Grid";
-                 itemInfoDesc.textContent = "Designate inventory object for detailed scan.";
+                 if (itemInfoTitle) itemInfoTitle.textContent = "Analysis Grid";
+                 if (itemInfoDesc) itemInfoDesc.textContent = "Designate inventory object for detailed scan.";
             }
-             itemUseButton.disabled = true;
-             itemDropButton.disabled = true;
+             if (itemUseButton) itemUseButton.disabled = true;
+             if (itemDropButton) itemDropButton.disabled = true;
              // Do not deselect the visual slot here, only reset the text/buttons
+             // The calling function should handle deselecting the slot if needed.
          }
 
 
         // ----- Email Section Logic -----
         function populateEmailList() {
-            emailList.innerHTML = '';
-            emails.sort((a, b) => b.id - a.id);
+            if (!emailList) return; // Safety check
+            emailList.innerHTML = ''; // Clear previous list
+            emails.sort((a, b) => b.id - a.id); // Sort newest first
              emails.forEach(email => {
                 const li = document.createElement('li');
                 li.setAttribute('data-email-id', email.id);
@@ -1152,8 +1203,9 @@
                  li.appendChild(subjectSpan);
 
                  li.addEventListener('click', () => {
-                    // Deselect other emails visually first
-                    emailList.querySelectorAll('li.active').forEach(item => item.classList.remove('active'));
+                     // Deselect other emails visually first
+                    const activeItems = emailList.querySelectorAll('li.active');
+                     activeItems.forEach(item => item.classList.remove('active'));
                      // Select clicked email
                     li.classList.add('active');
                     displayEmailContent(email.id);
@@ -1165,57 +1217,65 @@
          function displayEmailContent(emailId) {
              const email = emails.find(e => e.id === emailId);
              if (email) {
-                 emailPlaceholder.style.display = 'none';
-                 emailSubjectEl.style.display = 'block';
-                 emailMetaEl.style.display = 'block';
-                 emailBodyEl.style.display = 'block';
-
-                 emailSubjectEl.textContent = email.subject;
-                 emailSenderEl.textContent = `Origin Signal: ${email.sender}`; // Updated label
-                 emailDateEl.textContent = `Timestamp: ${email.date}`; // Updated label
-                 emailBodyEl.textContent = email.body;
+                 // Ensure elements exist before manipulating
+                 if (emailPlaceholder) emailPlaceholder.style.display = 'none';
+                 if (emailSubjectEl) { emailSubjectEl.style.display = 'block'; emailSubjectEl.textContent = email.subject; }
+                 if (emailMetaEl) emailMetaEl.style.display = 'block';
+                 if (emailSenderEl) emailSenderEl.textContent = `Origin Signal: ${email.sender}`;
+                 if (emailDateEl) emailDateEl.textContent = `Timestamp: ${email.date}`;
+                 if (emailBodyEl) { emailBodyEl.style.display = 'block'; emailBodyEl.textContent = email.body; }
 
                 if (!email.read) {
                      email.read = true;
-                     const listItem = emailList.querySelector(`li[data-email-id="${emailId}"]`);
+                     const listItem = emailList ? emailList.querySelector(`li[data-email-id="${emailId}"]`) : null;
                      if (listItem) {
                          listItem.classList.remove('unread');
                          listItem.classList.add('read');
                      }
                  }
-                emailContent.scrollTop = 0; // Scroll to top of message
+                 if (emailContent) {
+                    emailContent.scrollTop = 0; // Scroll to top of message
+                 }
+            } else {
+                console.warn(`Email with ID ${emailId} not found.`);
+                resetEmailContent(); // Show placeholder if email not found
             }
          }
 
          function resetEmailContent() {
-             emailPlaceholder.style.display = 'block';
-             emailSubjectEl.style.display = 'none';
-             emailMetaEl.style.display = 'none';
-             emailBodyEl.style.display = 'none';
+             if (emailPlaceholder) emailPlaceholder.style.display = 'block';
+             if (emailSubjectEl) emailSubjectEl.style.display = 'none';
+             if (emailMetaEl) emailMetaEl.style.display = 'none';
+             if (emailBodyEl) emailBodyEl.style.display = 'none';
             // Remove active class from list items if any
-            emailList.querySelectorAll('li.active').forEach(item => item.classList.remove('active'));
+            if (emailList) {
+                const activeItems = emailList.querySelectorAll('li.active');
+                activeItems.forEach(item => item.classList.remove('active'));
+            }
          }
 
         // ----- Ripple Effect on Click -----
         document.addEventListener("click", function (e) {
-            if (e.target.closest('button, .inventory-slot, #emailList li, input')) { // Prevent on interactive elements
+            // Prevent ripple on interactive elements OR inside already active panels/inventory
+            if (e.target.closest('button, .inventory-slot, #emailList li, input, .content-card.active, #inventoryContainer.active')) {
                 return;
             }
-             // Also check if the click is inside any active panel to avoid background ripples when interacting with panels
-             if (e.target.closest('.content-card.active, #inventoryContainer.active')) {
-                 return;
-             }
 
-             const ripple = document.createElement("div");
+            const ripple = document.createElement("div");
             ripple.classList.add("ripple");
             const size = Math.min(window.innerWidth, window.innerHeight) * 0.5; // Slightly smaller ripple base
-             ripple.style.width = ripple.style.height = size + "px";
-             ripple.style.left = e.clientX - size / 2 + "px";
-             ripple.style.top = e.clientY - size / 2 + "px";
+            ripple.style.width = ripple.style.height = size + "px";
+            // Center ripple on click coords
+            ripple.style.left = e.clientX - size / 2 + "px";
+            ripple.style.top = e.clientY - size / 2 + "px";
             document.body.appendChild(ripple);
+
+            // Use animationend event for removal
             ripple.addEventListener("animationend", () => {
-                ripple.remove();
-            });
+                if (ripple.parentNode) { // Check if it's still attached
+                    ripple.remove();
+                }
+            }, { once: true }); // Ensure listener is removed after firing once
          });
 
          // ----- Three.js Scene & Animation Code -----
@@ -1247,6 +1307,7 @@
                 camera.lookAt(0, 0, 0);
 
                 renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setPixelRatio(window.devicePixelRatio); // Added for sharper rendering
                 renderer.setSize(window.innerWidth, window.innerHeight);
                  // Ensure canvas is styled correctly by CSS (position: fixed, z-index: -1)
                  document.body.insertBefore(renderer.domElement, document.body.firstChild); // Add canvas to body start
@@ -1264,29 +1325,38 @@
 
                 // --- Textures ---
                 leftWallTexture = createCodeTexture(512);
-                leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping;
-                leftWallTexture.repeat.set(4, 5);
-                rightWallTexture = createCodeTexture(512); // Could create variation if needed
-                rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
-                rightWallTexture.repeat.set(4, 5);
-                floorTexture = createCodeTexture(512); // Floor uses same code texture
-                floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-                floorTexture.repeat.set(4, 10);
+                 if(leftWallTexture) { // Check texture creation success
+                    leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping;
+                    leftWallTexture.repeat.set(4, 5);
+                 }
+                rightWallTexture = createCodeTexture(512);
+                 if(rightWallTexture) {
+                    rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
+                    rightWallTexture.repeat.set(4, 5);
+                 }
+                floorTexture = createCodeTexture(512);
+                 if(floorTexture) {
+                    floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+                    floorTexture.repeat.set(4, 10);
+                 }
                 ceilingTexture = createCircuitTexture(512);
-                ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
-                ceilingTexture.repeat.set(3, 3); // Slightly denser ceiling circuits
+                 if(ceilingTexture) {
+                    ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
+                    ceilingTexture.repeat.set(3, 3); // Slightly denser ceiling circuits
+                 }
 
                 // --- Materials ---
-                const wallMat = new THREE.MeshPhongMaterial({ // Shared material for walls
-                    map: leftWallTexture, // Use left texture for both initially (can be different)
+                 // Ensure textures exist before creating materials that use them
+                const wallMat = new THREE.MeshPhongMaterial({
+                    map: leftWallTexture, // Will be null if texture failed
                     side: THREE.DoubleSide,
                     transparent: true,
-                    opacity: 0.65, // Slightly less opaque walls
-                    specular: 0x111111, // Dull specular
+                    opacity: 0.65,
+                    specular: 0x111111,
                     shininess: 10
                 });
-                const floorMat = new THREE.MeshPhongMaterial({ map: floorTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-                const ceilingMat = new THREE.MeshPhongMaterial({ map: ceilingTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+                 const floorMat = new THREE.MeshPhongMaterial({ map: floorTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+                 const ceilingMat = new THREE.MeshPhongMaterial({ map: ceilingTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
 
                 // --- Geometry ---
                 const planeGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
@@ -1297,49 +1367,49 @@
                 ceilingMesh.position.y = CORRIDOR_SIZE / 2;
                 corridor.add(ceilingMesh);
 
-                leftWallMesh = new THREE.Mesh(planeGeo, wallMat.clone()); // Clone material
-                leftWallMesh.material.map = leftWallTexture; // Assign correct texture map
+                leftWallMesh = new THREE.Mesh(planeGeo.clone(), wallMat.clone()); // Clone geometry too for safety
+                if(leftWallMesh.material) leftWallMesh.material.map = leftWallTexture; // Assign map if material exists
                 leftWallMesh.rotation.y = Math.PI / 2;
                 leftWallMesh.position.x = -CORRIDOR_SIZE / 2 - 500; // Start off-screen
                 corridor.add(leftWallMesh);
 
-                rightWallMesh = new THREE.Mesh(planeGeo, wallMat.clone()); // Clone material
-                rightWallMesh.material.map = rightWallTexture; // Assign correct texture map
+                rightWallMesh = new THREE.Mesh(planeGeo.clone(), wallMat.clone());
+                if(rightWallMesh.material) rightWallMesh.material.map = rightWallTexture;
                 rightWallMesh.rotation.y = -Math.PI / 2;
                 rightWallMesh.position.x = CORRIDOR_SIZE / 2 + 500; // Start off-screen
                 corridor.add(rightWallMesh);
 
                 // --- Plexus ---
-                 plexusGroup = createScrollingPlexus(); // Corrected function called here
-                 if (!plexusGroup) { // Check if plexus creation failed
+                 plexusGroup = createScrollingPlexus();
+                 if (!plexusGroup) {
                      console.error("Plexus creation failed. Skipping add.");
-                     // Handle error appropriately - maybe show simpler background?
                  } else {
                     plexusGroup.rotation.x = -0.2;
                      plexusGroup.scale.set(0, 0, 0); // Start scaled down
-                     plexusGroup.renderOrder = 1; // Ensure rendered correctly relative to sprites
+                     plexusGroup.renderOrder = 1;
                     scene.add(plexusGroup);
                 }
 
                  // --- Glyphs ---
-                const glyphLetters = ["⍀", "⍁", "⍂", "⍃", "⍄", "⍅", "⍆", "⍇", "⍈", "⍉", "⌿", "⍀", "⎍", "⏚", "⌘", "⌥", "⌶"]; // More abstract/tech symbols
+                const glyphLetters = ["⍀", "⍁", "⍂", "⍃", "⍄", "⍅", "⍆", "⍇", "⍈", "⍉", "⌿", "⍀", "⎍", "⏚", "⌘", "⌥", "⌶"];
                  glyphs = []; // Clear glyphs array before creating new ones
-                for (let i = 0; i < 40; i++) { // Increase glyph count slightly
+                for (let i = 0; i < 40; i++) {
                      const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
                      const sprite = createGlyphSprite(letter);
-                     // Initialize position (more spread out)
+                     if (!sprite) continue; // Skip if sprite creation failed
+
                      const radius = 800 + Math.random() * 1000;
                      const angle = Math.random() * Math.PI * 2;
                      const height = Math.random() * 1950 - 700;
-                     const depth = -Math.random() * (CORRIDOR_SIZE * 0.8); // More depth range
+                     const depth = -Math.random() * (CORRIDOR_SIZE * 0.8);
                      sprite.position.set(Math.cos(angle) * radius, height, depth);
 
                     sprite.userData = {
                          basePosition: sprite.position.clone(),
-                         oscillationSpeed: Math.random() * 0.4 + 0.3, // Slower oscillation
+                         oscillationSpeed: Math.random() * 0.4 + 0.3,
                          velocity: new THREE.Vector3(0, 0, 0),
-                         lifetime: Math.random() * 15, // Start at random lifetime phase
-                         maxLifetime: 15 + Math.random() * 10 // Longer life variance
+                         lifetime: Math.random() * 15,
+                         maxLifetime: 15 + Math.random() * 10
                      };
                      glyphs.push(sprite);
                      scene.add(sprite);
@@ -1354,75 +1424,79 @@
              } catch (error) {
                  console.error("Error during Three.js initialization:", error);
                  alert("Failed to initialize 3D background. Please check console for errors.");
-                 // Disable further animation attempts if init fails
                  renderer = null; // Flag that initialization failed
              }
          }
 
 
          function animateThreeJS() {
-            // Stop animation if renderer failed to initialize
-             if (!renderer) return;
+            // Stop animation if renderer failed to initialize or scene/camera missing
+             if (!renderer || !scene || !camera) return;
 
              requestAnimationFrame(animateThreeJS);
             const time = Date.now() * 0.001;
              // Ensure loadingStartTime is set before calculating elapsedTime
              if (typeof loadingStartTime === 'undefined') return;
              const elapsedTime = time - loadingStartTime;
-            if (isNaN(elapsedTime)) return; // Additional safety check
+            if (isNaN(elapsedTime) || elapsedTime < 0) return; // Additional safety check
 
 
             // --- Animations Based on Elapsed Time Since Login ---
 
-            // Global glyph fade-in (matches main content appearance)
-             const glyphStartDelay = 0.5; // Start fading slightly earlier
-            const glyphFadeDuration = 2.0; // Slower fade in
+            // Global glyph fade-in
+             const glyphStartDelay = 0.5;
+            const glyphFadeDuration = 2.0;
              // Update glyph fade calculation (check if glyphs array exists)
              if(glyphs && glyphs.length > 0) {
-                 globalGlyphFade = (elapsedTime < glyphStartDelay) ? 0 : Math.min((elapsedTime - glyphStartDelay) / glyphFadeDuration, 0.7); // Max opacity lower
+                 globalGlyphFade = (elapsedTime < glyphStartDelay) ? 0 : Math.min((elapsedTime - glyphStartDelay) / glyphFadeDuration, 0.7);
              } else {
                 globalGlyphFade = 0;
              }
 
              // Corridor rotation based on mouse
-            if (corridor) { // Check if corridor exists
-                 corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.04; // Smoother follow
+            if (corridor) {
+                 corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.04;
                  corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.04;
             }
 
-             // Animate walls sliding in (sync with mainContent fade)
-             // Check if wall meshes exist before animating them
+             // Animate walls sliding in
             if (leftWallMesh && rightWallMesh) {
-                 const wallAnimDuration = 2.5; // Slightly longer slide
-                 const wallStartDelay = 0.4; // Start slightly earlier to overlap content fade
+                 const wallAnimDuration = 2.5;
+                 const wallStartDelay = 0.4;
                  if (elapsedTime >= wallStartDelay && elapsedTime < wallStartDelay + wallAnimDuration) {
                     const progress = (elapsedTime - wallStartDelay) / wallAnimDuration;
-                    const easeProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI); // Ease-in-out remains good
-                    leftWallMesh.position.x = THREE.MathUtils.lerp(-CORRIDOR_SIZE / 2 - 500, -CORRIDOR_SIZE / 2, easeProgress);
-                    rightWallMesh.position.x = THREE.MathUtils.lerp(CORRIDOR_SIZE / 2 + 500, CORRIDOR_SIZE / 2, easeProgress);
+                    const easeProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+                     // Check position exists before setting
+                    if (leftWallMesh.position) {
+                        leftWallMesh.position.x = THREE.MathUtils.lerp(-CORRIDOR_SIZE / 2 - 500, -CORRIDOR_SIZE / 2, easeProgress);
+                    }
+                    if (rightWallMesh.position) {
+                        rightWallMesh.position.x = THREE.MathUtils.lerp(CORRIDOR_SIZE / 2 + 500, CORRIDOR_SIZE / 2, easeProgress);
+                    }
                  } else if (elapsedTime >= wallStartDelay + wallAnimDuration) {
                      // Ensure final position is exact after animation
-                     leftWallMesh.position.x = -CORRIDOR_SIZE / 2;
-                     rightWallMesh.position.x = CORRIDOR_SIZE / 2;
+                    if (leftWallMesh.position) leftWallMesh.position.x = -CORRIDOR_SIZE / 2;
+                    if (rightWallMesh.position) rightWallMesh.position.x = CORRIDOR_SIZE / 2;
                  }
             }
 
-            // Texture scrolling (Check if textures exist)
-             if(floorTexture) floorTexture.offset.y += SCROLL_SPEED_FLOOR;
-             if(leftWallTexture) leftWallTexture.offset.y += SCROLL_SPEED_CODE;
-             if(rightWallTexture) rightWallTexture.offset.y += SCROLL_SPEED_CODE;
-             if(ceilingTexture) ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.5;
+            // Texture scrolling
+            // Check texture and offset exist before modifying
+             if(floorTexture?.offset) floorTexture.offset.y += SCROLL_SPEED_FLOOR;
+             if(leftWallTexture?.offset) leftWallTexture.offset.y += SCROLL_SPEED_CODE;
+             if(rightWallTexture?.offset) rightWallTexture.offset.y += SCROLL_SPEED_CODE;
+             if(ceilingTexture?.offset) ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.5;
 
 
-             // Animate plexus appearance (sync with nav appearance)
-            if(plexusGroup) { // Check if plexusGroup exists
-                 const plexusStartDelay = 3.0; // Start when nav starts animating
-                 const plexusAnimDuration = 1.8; // Slower scale up
+             // Animate plexus appearance
+            if(plexusGroup?.scale) { // Check if plexusGroup and scale exist
+                 const plexusStartDelay = 3.0;
+                 const plexusAnimDuration = 1.8;
                  if (elapsedTime < plexusStartDelay) {
                     plexusGroup.scale.set(0, 0, 0);
                  } else if (elapsedTime < plexusStartDelay + plexusAnimDuration) {
                      const s = (elapsedTime - plexusStartDelay) / plexusAnimDuration;
-                     const easeS = 1 - Math.pow(1 - s, 3); // Ease-out cubic (faster start, slow end)
+                     const easeS = 1 - Math.pow(1 - s, 3);
                      plexusGroup.scale.set(easeS, easeS, easeS);
                  } else {
                      plexusGroup.scale.set(1, 1, 1); // Ensure final scale is 1
@@ -1432,7 +1506,7 @@
 
             // Update dynamic elements
             // Check if plexus exists and is scaled up before updating
-             if (plexusGroup && plexusGroup.children.length > 0 && plexusGroup.scale.x > 0.01) {
+             if (plexusGroup?.children?.length > 0 && plexusGroup?.scale?.x > 0.01) {
                  updateScrollingPlexus(plexusGroup.children[0], time);
              }
              // Check if glyphs array exists and has items before updating
@@ -1441,106 +1515,102 @@
              }
 
             // Render scene
-             if (scene && camera) { // Check scene and camera exist
-                 renderer.render(scene, camera);
-             }
+            renderer.render(scene, camera);
          }
 
          // --- Helper functions for Three.js ---
 
-        // ** THIS IS THE CORRECTED FUNCTION **
          function createScrollingPlexus() {
-             const group = new THREE.Group();
-             const nodeCount = 180, threshold = 450, scrollSpeed = 0.8;
-             const regionMinX = -1200, regionMaxX = 1200, regionMinY = -1150, regionMaxY = -650;
-             const regionMinZ = -3200, regionMaxZ = 1300;
-             const regionWidth = regionMaxX - regionMinX, regionDepth = regionMaxZ - regionMinZ;
+             try { // Add try-catch for robustness
+                const group = new THREE.Group();
+                const nodeCount = 180, threshold = 450, scrollSpeed = 0.8;
+                const regionMinX = -1200, regionMaxX = 1200, regionMinY = -1150, regionMaxY = -650;
+                const regionMinZ = -3200, regionMaxZ = 1300;
+                const regionWidth = regionMaxX - regionMinX, regionDepth = regionMaxZ - regionMinZ;
 
-             const nodes = [];
-             for (let i = 0; i < nodeCount; i++) {
-                 nodes.push(
-                     new THREE.Vector3(
-                         THREE.MathUtils.randFloat(regionMinX, regionMaxX),
-                         THREE.MathUtils.randFloat(regionMinY, regionMaxY),
-                         THREE.MathUtils.randFloat(regionMinZ, regionMaxZ)
-                     ) // CORRECTED LINE - Removed ". PADDING_TOP"
-                 );
-             }
+                const nodes = [];
+                for (let i = 0; i < nodeCount; i++) {
+                    nodes.push(
+                        new THREE.Vector3(
+                            THREE.MathUtils.randFloat(regionMinX, regionMaxX),
+                            THREE.MathUtils.randFloat(regionMinY, regionMaxY),
+                            THREE.MathUtils.randFloat(regionMinZ, regionMaxZ)
+                        )
+                    );
+                }
 
-             const geometry = new THREE.BufferGeometry();
-             const material = new THREE.LineBasicMaterial({
-                 color: 0x00aaff,
-                 transparent: true,
-                 opacity: 0.45,
-                 depthWrite: false
-             });
+                const geometry = new THREE.BufferGeometry();
+                const material = new THREE.LineBasicMaterial({
+                    color: 0x00aaff,
+                    transparent: true,
+                    opacity: 0.45,
+                    depthWrite: false
+                });
 
-             const plexusLines = new THREE.LineSegments(geometry, material);
-             plexusLines.frustumCulled = false;
-             plexusLines.renderOrder = 1;
-             plexusLines.userData = { nodes, regionMinZ, regionMaxZ, regionDepth, threshold, scrollSpeed };
-             group.add(plexusLines);
-             return group;
+                const plexusLines = new THREE.LineSegments(geometry, material);
+                plexusLines.frustumCulled = false;
+                plexusLines.renderOrder = 1;
+                plexusLines.userData = { nodes, regionMinZ, regionMaxZ, regionDepth, threshold, scrollSpeed };
+                group.add(plexusLines);
+                return group;
+            } catch (error) {
+                console.error("Error creating plexus:", error);
+                return null; // Return null on failure
+            }
          }
 
 
          function updateScrollingPlexus(plexusLines, time) {
-            // Add check if plexusLines geometry exists
-            if (!plexusLines || !plexusLines.geometry) return;
+            // Basic checks for existence
+            if (!plexusLines?.geometry || !plexusLines?.userData?.nodes) return;
 
-             const geometry = plexusLines.geometry;
-             // Add check if userData exists
-             if (!plexusLines.userData) return;
+            const geometry = plexusLines.geometry;
             const { nodes, regionMinZ, regionMaxZ, regionDepth, threshold, scrollSpeed } = plexusLines.userData;
-             // Check if nodes array exists
-             if (!nodes) return;
-
             const positions = [];
 
-             // Update node positions (simpler vertical drift)
-             for (const n of nodes) {
-                 // Basic check if n is a valid Vector3 object
-                 if (!n || typeof n.z === 'undefined' || typeof n.y === 'undefined') continue;
+            // Update node positions
+            for (const n of nodes) {
+                if (!n?.z || !n?.y) continue; // Check if n and properties exist
 
-                 // Simple scroll based on time delta (better than fixed frame rate assumption)
-                 n.z += scrollSpeed; // Simple constant speed, adjust multiplier if needed
-                 n.y += (Math.random() - 0.5) * 0.5; // Subtle vertical jitter
+                n.z += scrollSpeed;
+                n.y += (Math.random() - 0.5) * 0.5;
                 if (n.z > regionMaxZ + 100) n.z = regionMinZ - THREE.MathUtils.randFloat(0, 100);
-                 // Keep Y within bounds somewhat
-                 n.y = THREE.MathUtils.clamp(n.y, -1150, -650);
+                n.y = THREE.MathUtils.clamp(n.y, -1150, -650);
             }
 
-             // Calculate line segments
-             if(nodes.length > 1) { // Need at least 2 nodes to make a line
-                 for (let i = 0; i < nodes.length; i++) {
-                    if(!nodes[i]) continue; // Skip if node is undefined somehow
-                     for (let j = i + 1; j < nodes.length; j++) {
-                         if(!nodes[j]) continue; // Skip if node is undefined
-                         try { // Add try-catch around distance calculation
-                             const distSq = nodes[i].distanceToSquared(nodes[j]); // Use squared distance
-                            if (distSq < threshold * threshold) { // Compare with squared threshold
-                                positions.push(nodes[i].x, nodes[i].y, nodes[i].z);
-                                 positions.push(nodes[j].x, nodes[j].y, nodes[j].z);
-                            }
-                         } catch(e) {
-                            console.warn("Error calculating distance in plexus:", e, nodes[i], nodes[j]);
-                         }
-                    }
-                 }
-             }
+            // Calculate line segments
+            if(nodes.length > 1) {
+                for (let i = 0; i < nodes.length; i++) {
+                   if(!nodes[i]) continue;
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        if(!nodes[j]) continue;
+                        try {
+                            const distSq = nodes[i].distanceToSquared(nodes[j]);
+                           if (distSq < threshold * threshold) {
+                               positions.push(nodes[i].x, nodes[i].y, nodes[i].z);
+                                positions.push(nodes[j].x, nodes[j].y, nodes[j].z);
+                           }
+                        } catch(e) {
+                           console.warn("Error calculating distance in plexus:", e, nodes[i], nodes[j]);
+                        }
+                   }
+                }
+            }
 
-            // Update geometry attributes only if positions array has data
-            if (positions.length > 0 && geometry.setAttribute) {
-                 geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-                geometry.attributes.position.needsUpdate = true;
-             } else if (geometry.getAttribute('position') && geometry.getAttribute('position').count > 0) {
-                 // If no lines should be drawn, clear the existing buffer
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
-                geometry.attributes.position.needsUpdate = true;
-             }
-
-             // No need to compute bounding sphere frequently unless scale changes dramatically
-             // geometry.computeBoundingSphere();
+            // Update geometry attributes
+            // Ensure setAttribute method exists
+            if (geometry.setAttribute) {
+                if (positions.length > 0) {
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                } else if (geometry.getAttribute('position') && geometry.getAttribute('position').count > 0) {
+                    // Clear buffer if no lines
+                    geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+                }
+                // Only update if attribute exists
+                if (geometry.attributes.position) {
+                    geometry.attributes.position.needsUpdate = true;
+                }
+            }
          }
 
 
@@ -1548,20 +1618,19 @@
             const canvas = document.createElement("canvas");
              canvas.width = size; canvas.height = size;
             const ctx = canvas.getContext("2d");
-             if (!ctx) return null; // Handle canvas context failure
-            ctx.fillStyle = "#08141E"; // Darker base for code texture
+             if (!ctx) { console.error("Failed to get 2D context for code texture"); return null; }
+            ctx.fillStyle = "#08141E";
             ctx.fillRect(0, 0, size, size);
-             ctx.fillStyle = "rgba(0, 180, 220, 0.5)"; // Adjusted alpha and color
-            ctx.font = "11px monospace"; // Slightly larger font
-             // More technical/symbolic chars
+             ctx.fillStyle = "rgba(0, 180, 220, 0.5)";
+            ctx.font = "11px monospace";
             const codeChars = ["0","1","░","▒","▓","<",">","/","{","}","[","]","λ","μ","Σ","Δ","∫","∬","∂","∇","±","∈","∩","∪","∀","∃","∵","∴", ":", ";"];
             const columns = 35, rows = 45;
             const colWidth = size / columns, rowHeight = size / rows;
             for (let c = 0; c < columns; c++) {
                 for (let r = 0; r < rows; r++) {
-                     if (Math.random() > 0.2) { // Skip some cells for sparseness
+                     if (Math.random() > 0.2) {
                         const char = codeChars[Math.floor(Math.random() * codeChars.length)];
-                         ctx.fillText(char, c * colWidth + Math.random()*5, r * rowHeight + rowHeight * 0.8 + Math.random()*5); // Add slight jitter
+                         ctx.fillText(char, c * colWidth + Math.random()*5, r * rowHeight + rowHeight * 0.8 + Math.random()*5);
                      }
                  }
              }
@@ -1572,34 +1641,31 @@
              const canvas = document.createElement("canvas");
              canvas.width = size; canvas.height = size;
             const ctx = canvas.getContext("2d");
-             if (!ctx) return null; // Handle canvas context failure
-            ctx.fillStyle = "#0A1825"; // Slightly different dark bg for ceiling
+            if (!ctx) { console.error("Failed to get 2D context for circuit texture"); return null; }
+            ctx.fillStyle = "#0A1825";
              ctx.fillRect(0, 0, size, size);
-            const circuitColor = "rgba(0, 204, 255, 0.25)"; // More faded color
-            // Straight Lines (Traces)
+            const circuitColor = "rgba(0, 204, 255, 0.25)";
             ctx.lineWidth = 1.5;
-             for (let i = 0; i < 35; i++) { // More traces
+             for (let i = 0; i < 35; i++) {
                 ctx.strokeStyle = circuitColor;
                  ctx.beginPath();
                 let x1 = Math.random() * size, y1 = Math.random() * size;
-                 // Prefer horizontal/vertical traces
                 let x2, y2;
-                 if(Math.random() < 0.7) { // Higher chance of axis-aligned
-                     if(Math.random() < 0.5) { x2 = Math.random() * size; y2 = y1; } // Horizontal
-                    else { x1 = Math.random() * size; x2 = x1; y2 = Math.random() * size; } // Vertical
-                 } else { // Diagonal traces less common
+                 if(Math.random() < 0.7) {
+                     if(Math.random() < 0.5) { x2 = Math.random() * size; y2 = y1; }
+                    else { x1 = Math.random() * size; x2 = x1; y2 = Math.random() * size; }
+                 } else {
                     x2 = x1 + (Math.random() - 0.5) * 100; y2 = y1 + (Math.random() - 0.5) * 100;
                  }
-                ctx.moveTo(x1, y1);
+                 ctx.moveTo(x1, y1);
                  ctx.lineTo(x2, y2);
                 ctx.stroke();
              }
-             // Small Circles (Pads/Vias)
             for (let i = 0; i < 50; i++) {
-                ctx.fillStyle = circuitColor; // Use fill for pads
+                ctx.fillStyle = circuitColor;
                  ctx.beginPath();
                  let cx = Math.random() * size, cy = Math.random() * size;
-                 let r = Math.random() * 1.5 + 0.5; // Smaller pads
+                 let r = Math.random() * 1.5 + 0.5;
                  ctx.arc(cx, cy, r, 0, Math.PI * 2);
                  ctx.fill();
              }
@@ -1607,62 +1673,59 @@
          }
 
         function createGlyphSprite(letter) {
-            const canvas = document.createElement("canvas");
-             canvas.width = 128; canvas.height = 128;
-             const ctx = canvas.getContext("2d");
-             if (!ctx) return null; // Handle context failure
+            try {
+                const canvas = document.createElement("canvas");
+                canvas.width = 128; canvas.height = 128;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) { console.error("Failed to get 2D context for glyph sprite"); return null; }
 
-            ctx.clearRect(0, 0, 128, 128);
+                ctx.clearRect(0, 0, 128, 128);
+                ctx.shadowColor = "rgba(0, 204, 255, 0.8)";
+                ctx.shadowBlur = 15;
+                ctx.font = "90px 'Orbitron', sans-serif";
+                ctx.fillStyle = "rgba(200, 255, 255, 1.0)";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(letter, 64, 64);
+                ctx.shadowColor = "transparent";
+                ctx.shadowBlur = 0;
 
-             // Add a subtle outer glow effect on the canvas itself
-            ctx.shadowColor = "rgba(0, 204, 255, 0.8)";
-            ctx.shadowBlur = 15;
-
-             ctx.font = "90px 'Orbitron', sans-serif"; // Use Orbitron if possible, fallback needed
-             ctx.fillStyle = "rgba(200, 255, 255, 1.0)"; // Slightly desaturated white/blue
-             ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(letter, 64, 64);
-
-            // Clear shadow for next draws if any
-            ctx.shadowColor = "transparent";
-             ctx.shadowBlur = 0;
-
-             const texture = new THREE.CanvasTexture(canvas);
-             const material = new THREE.SpriteMaterial({
-                 map: texture,
-                 transparent: true,
-                 alphaTest: 0.05, // Lower alphaTest for softer edges
-                 sizeAttenuation: true,
-                 depthWrite: false // Prevent depth conflicts
-             });
-            const sprite = new THREE.Sprite(material);
-             sprite.renderOrder = 2; // Render above plexus
-            // Initial scale is handled by updateGlyphs based on distance
-             return sprite;
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({
+                    map: texture,
+                    transparent: true,
+                    alphaTest: 0.05,
+                    sizeAttenuation: true,
+                    depthWrite: false
+                });
+                const sprite = new THREE.Sprite(material);
+                sprite.renderOrder = 2;
+                return sprite;
+            } catch (error) {
+                console.error("Error creating glyph sprite:", error);
+                return null;
+            }
          }
 
 
          function updateGlyphs(time) {
              // Add checks for camera existence
-            if (!camera || !glyphs) return;
+            if (!camera || !glyphs || glyphs.length === 0) return;
 
              const cameraPos = camera.position;
 
              glyphs.forEach(sprite => {
-                // Check if sprite and its properties are valid
-                if (!sprite || !sprite.userData || !sprite.material || !sprite.position || !sprite.scale) return;
+                // Check if sprite and its core properties are valid
+                if (!sprite?.userData || !sprite?.material || !sprite?.position || !sprite?.scale) return;
 
-                sprite.userData.lifetime = (sprite.userData.lifetime ?? 0) + 1 / 60; // Approximate delta time, with nullish coalescing for safety
-                 const lifeRatio = sprite.userData.lifetime / (sprite.userData.maxLifetime || 1); // Avoid division by zero/undefined
-                 const fade = Math.sin(Math.min(lifeRatio, 1.0) * Math.PI); // Ensure lifeRatio doesn't exceed 1 for sin curve
-                sprite.material.opacity = Math.max(fade, 0) * (globalGlyphFade || 0); // Use global fade and sin fade
+                sprite.userData.lifetime = (sprite.userData.lifetime ?? 0) + 1 / 60;
+                 const lifeRatio = sprite.userData.lifetime / (sprite.userData.maxLifetime || 1);
+                 const fade = Math.sin(Math.min(lifeRatio, 1.0) * Math.PI);
+                sprite.material.opacity = Math.max(fade, 0) * (globalGlyphFade || 0);
 
                  // Respawn logic
                  if (lifeRatio >= 1.0) {
-                    sprite.userData.lifetime = 0; // Reset lifetime
-                    // Respawn (Use the random function or a specific wall function)
-                    // Example: Simple random respawn further away
+                    sprite.userData.lifetime = 0;
                      const radius = 1000 + Math.random() * 800;
                      const angle = Math.random() * Math.PI * 2;
                      const height = Math.random() * 1800 - 800;
@@ -1670,64 +1733,52 @@
                      sprite.position.set(Math.cos(angle) * radius, height, depth);
                     if(sprite.userData.basePosition) sprite.userData.basePosition.copy(sprite.position);
                      if(sprite.userData.velocity) sprite.userData.velocity.set(0, 0, 0);
-                    // Opacity will naturally fade back in via the sin curve and global fade
                 }
 
-                // Base Oscillation (Subtler)
+                // Base Oscillation
                  if (sprite.userData.basePosition) {
                      const t = time * (sprite.userData.oscillationSpeed || 0.5);
-                     const ox = Math.sin(t * 0.8) * 10; // Less X movement
-                     const oy = Math.cos(t * 1.2) * 8;  // Less Y movement
+                     const ox = Math.sin(t * 0.8) * 10;
+                     const oy = Math.cos(t * 1.2) * 8;
                     sprite.position.x = sprite.userData.basePosition.x + ox;
                     sprite.position.y = sprite.userData.basePosition.y + oy;
                  }
 
                 // Mouse Repulsion
-                 try { // Add try-catch for safety during projection/calculations
-                    // Project sprite world position to screen space (normalized device coords)
+                 try {
                     const spriteScreenPos = sprite.position.clone().project(camera);
-
-                    // Convert normalized device coords (-1 to 1) to screen coords (0 to width/height)
                     const glyphScreenX = (spriteScreenPos.x * 0.5 + 0.5) * window.innerWidth;
                     const glyphScreenY = (-spriteScreenPos.y * 0.5 + 0.5) * window.innerHeight;
-                    const mouseScreenX = (mouse.x * 0.5 + 0.5) * window.innerWidth; // Mouse coords are already -1 to 1
+                    const mouseScreenX = (mouse.x * 0.5 + 0.5) * window.innerWidth;
                     const mouseScreenY = (-mouse.y * 0.5 + 0.5) * window.innerHeight;
-
                     const dist = Math.hypot(glyphScreenX - mouseScreenX, glyphScreenY - mouseScreenY);
                     let pushX = 0, pushY = 0;
 
-                    if (dist < repulsionDistance && dist > 1) { // Add minimum distance to avoid division by zero/extreme force
+                    if (dist < repulsionDistance && dist > 1) {
                         const dx = glyphScreenX - mouseScreenX;
                         const dy = glyphScreenY - mouseScreenY;
                         const angle = Math.atan2(dy, dx);
-                         // Force diminishes with distance (1 / dist or 1 / dist^2)
-                        const force = (repulsionDistance / dist - 1) * repulsionForce * 0.5; // Adjusted force calculation
+                        const force = (repulsionDistance / dist - 1) * repulsionForce * 0.5;
                         pushX = Math.cos(angle) * force;
                          pushY = Math.sin(angle) * force;
                     }
 
-                    // Apply velocity in world space (needs care - mapping screen push to world velocity)
-                    // This is a simplified approach: applying push directly to velocity, assumes uniform depth scaling somewhat.
                     if(sprite.userData.velocity){
-                        sprite.userData.velocity.x = (sprite.userData.velocity.x || 0) + pushX * 0.1; // Scale down screen push for world velocity
+                        sprite.userData.velocity.x = (sprite.userData.velocity.x || 0) + pushX * 0.1;
                         sprite.userData.velocity.y = (sprite.userData.velocity.y || 0) + pushY * 0.1;
-
-                        // Apply Friction & Update Position
                         sprite.userData.velocity.multiplyScalar(friction);
-                        sprite.position.addScaledVector(sprite.userData.velocity, 0.1); // Apply scaled velocity
+                        sprite.position.addScaledVector(sprite.userData.velocity, 0.1);
                      }
                  } catch (e) {
                     console.warn("Error during glyph projection/repulsion:", e, sprite);
                  }
 
                  // --- Size Attenuation based on Distance ---
-                 try { // Add try-catch for distance/scale calculation
+                 try {
                      const d = cameraPos.distanceTo(sprite.position);
-                     const minDist = 300, maxDist = 2500; // Adjusted range for scaling
-                    const scaleClose = 280, scaleFar = 140; // Adjusted sprite sizes
-
+                     const minDist = 300, maxDist = 2500;
+                    const scaleClose = 280, scaleFar = 140;
                     const clampDist = THREE.MathUtils.clamp(d, minDist, maxDist);
-                     // Use smoother step or inverse square for scaling? Linear is simple.
                     const alpha = (clampDist - minDist) / (maxDist - minDist);
                      const finalScale = THREE.MathUtils.lerp(scaleClose, scaleFar, alpha);
                     sprite.scale.set(finalScale, finalScale, 1);
@@ -1737,26 +1788,23 @@
             });
          }
 
-         function spawnGlyphOnWall(sprite) { // Optional alternative spawn logic
-             if (!sprite || !sprite.position) return; // Basic check
-            const wallDistX = CORRIDOR_SIZE / 2 - 50; // X distance for walls
+         // Note: spawnGlyphOnWall is defined but not currently used in the respawn logic. Kept for potential future use.
+        function spawnGlyphOnWall(sprite) {
+             if (!sprite?.position) return;
+            const wallDistX = CORRIDOR_SIZE / 2 - 50;
             const heightRange = 1600;
             const heightOffset = -600;
              const depthRange = CORRIDOR_SIZE * 0.8;
             const depthOffset = -CORRIDOR_SIZE * 0.1;
-
             let x, y, z = depthOffset - Math.random() * depthRange;
              y = heightOffset + Math.random() * heightRange;
-
-             if(Math.random() < 0.5) { x = -wallDistX; } // Left Wall
-            else { x = wallDistX; }                  // Right Wall
-            // Could add ceiling spawn option here too
+             if(Math.random() < 0.5) { x = -wallDistX; } else { x = wallDistX; }
              sprite.position.set(x, y, z);
         }
 
 
         function onWindowResize() {
-             if (!camera || !renderer) return; // Check if objects exist
+             if (!camera || !renderer) return;
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1767,12 +1815,10 @@
              mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
              mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-            // Map mouse position to target corridor rotation (subtler effect)
-            const maxRotation = 0.06; // Reduced max rotation
+            const maxRotation = 0.06;
              targetRotationY = mouse.x * maxRotation;
-             targetRotationX = mouse.y * maxRotation * 0.5; // Even less X rotation
+             targetRotationX = mouse.y * maxRotation * 0.5;
          }
-
 
      </script>
 
