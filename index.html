@@ -4,48 +4,94 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Futuristic Player Stats</title>
-  <!-- Optional: Import a futuristic font -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Futuristic Font (Orbitron) -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap"
+    rel="stylesheet"
+  />
+
   <style>
-    /* Basic Reset */
+    /* BASIC RESET */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
 
-    /* BODY BACKGROUND */
+    /* BODY STYLES */
     body {
-      position: relative;
       font-family: 'Orbitron', sans-serif;
       color: #fff;
-      /* Ethereal gradient background */
-      background: linear-gradient(115deg, #0cc, #0af);
-      overflow: hidden;
+      overflow: hidden; /* Hide scrollbars if the 3D grid extends beyond the window */
+      position: relative;
+      background: #000; /* Dark base to contrast the grid lines */
     }
 
-    /* ANIMUS LINES OVERLAY */
-    .animus-lines {
+    /* SCENE WRAPPER: holds the 3D perspective */
+    .scene {
       position: absolute;
       top: 0;
       left: 0;
-      width: 200%;
-      height: 200%;
-      /* This repeating gradient creates blue lines at a 120° angle */
-      background: repeating-linear-gradient(
-        120deg,
-        transparent,
-        transparent 30px,
-        rgba(0, 255, 255, 0.15) 30px,
-        rgba(0, 255, 255, 0.15) 31px
-      );
-      /* Translate and rotate to give a 3D perspective feel */
-      transform: translate(-25%, -25%) rotate(-15deg);
-      z-index: 0;
-      pointer-events: none;
+      width: 100%;
+      height: 100%;
+      /* The higher the perspective value, the weaker the 3D effect; tweak as needed */
+      perspective: 900px;
+      perspective-origin: 50% 50%;
+      z-index: 0; /* Behind everything else */
+      overflow: hidden;
     }
 
-    /* FLOATING SYMBOLS */
+    /* 3D GRID PLANE */
+    .grid {
+      /* Start from the center of the scene */
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 2000px;
+      height: 2000px;
+
+      /* We want child transforms to remain in 3D space */
+      transform-style: preserve-3d;
+
+      /*
+        Move the grid so that its center is pinned at the scene center.
+        We'll rotate it via JavaScript for the "shifting" effect.
+      */
+      transform: translate(-50%, -50%) rotateX(0deg) rotateY(0deg);
+
+      /*
+        The background is a combination of repeating gradients to form a grid.
+        You can tweak the line spacing, color, or add more layers.
+      */
+      background:
+        /* Horizontal lines */
+        repeating-linear-gradient(
+          transparent,
+          transparent 48px,
+          rgba(0, 255, 255, 0.2) 49px,
+          rgba(0, 255, 255, 0.2) 50px
+        ),
+        /* Vertical lines (rotated 90 deg) */
+        repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 48px,
+          rgba(0, 255, 255, 0.2) 49px,
+          rgba(0, 255, 255, 0.2) 50px
+        ),
+        /* Subtle radial glow to emulate an ethereal vibe */
+        radial-gradient(
+          circle at center,
+          rgba(0, 255, 255, 0.1),
+          transparent 70%
+        );
+
+      background-blend-mode: screen;
+      background-size: cover;
+    }
+
+    /* FLOATING SYMBOLS (OPTIONAL, FOR EXTRA FLAIR) */
     .floating-symbols {
       position: absolute;
       top: 0;
@@ -53,7 +99,7 @@
       width: 100%;
       height: 100%;
       pointer-events: none;
-      z-index: 1;
+      z-index: 1; /* Above the grid, below the content */
       overflow: hidden;
     }
     .symbol {
@@ -132,7 +178,7 @@
       padding: 20px;
       margin: 10px 0;
     }
-    /* Map Container */
+    /* MAP CONTAINER */
     #map-container {
       width: 100%;
       height: 400px;
@@ -151,10 +197,12 @@
 </head>
 <body>
 
-  <!-- Animus Perspective Lines -->
-  <div class="animus-lines"></div>
+  <!-- 3D SCENE (Grid that shifts with cursor) -->
+  <div class="scene">
+    <div class="grid" id="animusGrid"></div>
+  </div>
 
-  <!-- Floating Symbols (More added for extra effect) -->
+  <!-- OPTIONAL FLOATING SYMBOLS -->
   <div class="floating-symbols">
     <span class="symbol" style="left: 5%; font-size: 1.5rem; animation-delay: 0s;">Λ</span>
     <span class="symbol" style="left: 15%; font-size: 2rem; animation-delay: 1s;">φ</span>
@@ -173,7 +221,7 @@
     <span class="symbol" style="left: 60%; font-size: 1.3rem; animation-delay: 8s;">δ</span>
   </div>
 
-  <!-- Navigation Bar -->
+  <!-- NAVIGATION -->
   <nav>
     <button data-section="inventory" class="active">Inventory</button>
     <button data-section="map">Map</button>
@@ -182,7 +230,7 @@
     <button data-section="scanner">Scanner</button>
   </nav>
 
-  <!-- Content Sections -->
+  <!-- CONTENT SECTIONS -->
   <div id="inventory" class="content-section active-section">
     <h1>Inventory</h1>
     <p>This is the Inventory area. You can add details later.</p>
@@ -191,6 +239,7 @@
   <div id="map" class="content-section">
     <h1>Map</h1>
     <div id="map-container" class="neon-border">
+      <!-- Placeholder area for a zoomable map image -->
       <p style="text-align: center; padding-top: 180px; color: #0ff;">Zoomable map will appear here</p>
     </div>
   </div>
@@ -210,8 +259,9 @@
     <p>This is the Scanner area. Add your content later.</p>
   </div>
 
-  <!-- JavaScript for Section Switching -->
+  <!-- JAVASCRIPT -->
   <script>
+    // SECTION SWITCHING
     const buttons = document.querySelectorAll('nav button');
     const sections = document.querySelectorAll('.content-section');
 
@@ -254,6 +304,22 @@
           section.style.display = 'none';
         }
       });
+    });
+
+    // 3D GRID SHIFT WITH MOUSE
+    const animusGrid = document.getElementById('animusGrid');
+    document.addEventListener('mousemove', (e) => {
+      // Get cursor position as a fraction of the window size
+      const xFraction = e.clientX / window.innerWidth - 0.5; // range: -0.5 to 0.5
+      const yFraction = e.clientY / window.innerHeight - 0.5;
+
+      // Multiply by some angle factor to set how dramatic the rotation is
+      const rotateX = yFraction * 30; // tilt up/down
+      const rotateY = xFraction * 30; // tilt left/right
+
+      // Update the transform of the grid
+      animusGrid.style.transform =
+        `translate(-50%, -50%) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
     });
   </script>
 </body>
