@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Animus Corridor Simulation - Advanced</title>
+  <title>Animus Corridor Simulation - Non-Euclidean</title>
   <!-- Three.js from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
@@ -12,7 +12,7 @@
       margin: 0; 
       padding: 0;
       overflow: hidden;
-      background: #0d1b2a; /* fallback if WebGL fails */
+      background: #0d1b2a; /* Deep blue background */
       font-family: Arial, sans-serif;
     }
     canvas {
@@ -77,7 +77,7 @@
       font-size: 1.1em;
       line-height: 1.6em;
     }
-    /* Show only Inventory by default */
+    /* Only show Inventory by default */
     #map, #email, #codex, #scanner {
       display: none;
     }
@@ -118,22 +118,19 @@
   <!-- ===== Three.js Scene ===== -->
   <script>
     let scene, camera, renderer;
-    let corridor;
-    let corridorEdges = []; // store edges so we can see wireframe lines
-    let techShapesGroup;    // group for the “tech shapes”
-    let glyphs = [];        // array of glyph sprites
+    let corridor;  // main corridor group
+    let techShapesGroup; // techy symbols on the sides
+    let glyphs = [];     // interactive glyph sprites
 
-    // Corridor config
+    // Configurations
     const CORRIDOR_SIZE = 2000;
+    const repulsionDistance = 120; // in screen pixels
+    const repulsionForce = 1.5;      // stronger push for glyphs
+    const friction = 0.93;
 
-    // Mouse & corridor rotation
+    // Mouse & rotation targets
     let mouse = new THREE.Vector2(0, 0);
     let targetRotationX = 0, targetRotationY = 0;
-
-    // Interactivity
-    const repulsionDistance = 100;
-    const repulsionForce = 1.0; // stronger push
-    const friction = 0.95;
 
     init();
     animate();
@@ -142,13 +139,13 @@
       /* ===== Scene & Fog ===== */
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0d1b2a);
-      // Lessen fog a bit so corridor is more visible
+      // Slightly lighter fog so we see more of the corridor’s warp
       scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0008);
 
       /* ===== Camera ===== */
-      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 5000);
-      // Position camera somewhat inside corridor
-      camera.position.set(0, 200, 1000);
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 5000);
+      // Position the camera slightly outside the corridor so we "watch" it
+      camera.position.set(0, 300, 1500);
       camera.lookAt(0, 0, 0);
 
       /* ===== Renderer ===== */
@@ -163,17 +160,16 @@
       directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
 
-      /* ===== Corridor (Open-Ended) ===== */
+      /* ===== Corridor (Non-Euclidean) ===== */
       corridor = new THREE.Group();
+      // Build four walls with a custom "techy" texture
       const half = CORRIDOR_SIZE / 2;
-      // Use a “techy” custom texture
-      const corridorTexture = createTechBackgroundTexture(512);
-      corridorTexture.wrapS = corridorTexture.wrapT = THREE.RepeatWrapping;
-      // For a more condensed pattern, repeat it more
-      corridorTexture.repeat.set(2, 2);
+      const techTexture = createTechBackgroundTexture(512);
+      techTexture.wrapS = techTexture.wrapT = THREE.RepeatWrapping;
+      techTexture.repeat.set(2, 2);
 
       const corridorMat = new THREE.MeshPhongMaterial({
-        map: corridorTexture,
+        map: techTexture,
         side: THREE.DoubleSide,
         transparent: true,
         opacity: 0.65
@@ -182,7 +178,7 @@
       // Floor
       const floorGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
       const floor = new THREE.Mesh(floorGeo, corridorMat);
-      floor.rotation.x = -Math.PI / 2;
+      floor.rotation.x = -Math.PI/2;
       floor.position.y = -half;
       corridor.add(floor);
       addEdges(floorGeo, floor);
@@ -190,7 +186,7 @@
       // Ceiling
       const ceilingGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
       const ceiling = new THREE.Mesh(ceilingGeo, corridorMat);
-      ceiling.rotation.x = Math.PI / 2;
+      ceiling.rotation.x = Math.PI/2;
       ceiling.position.y = half;
       corridor.add(ceiling);
       addEdges(ceilingGeo, ceiling);
@@ -198,7 +194,7 @@
       // Left Wall
       const leftWallGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
       const leftWall = new THREE.Mesh(leftWallGeo, corridorMat);
-      leftWall.rotation.y = Math.PI / 2;
+      leftWall.rotation.y = Math.PI/2;
       leftWall.position.x = -half;
       corridor.add(leftWall);
       addEdges(leftWallGeo, leftWall);
@@ -206,44 +202,46 @@
       // Right Wall
       const rightWallGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
       const rightWall = new THREE.Mesh(rightWallGeo, corridorMat);
-      rightWall.rotation.y = -Math.PI / 2;
+      rightWall.rotation.y = -Math.PI/2;
       rightWall.position.x = half;
       corridor.add(rightWall);
       addEdges(rightWallGeo, rightWall);
 
-      // (No back wall => corridor extends into fog)
+      // (No back wall so the corridor recedes into fog)
       scene.add(corridor);
 
-      /* ===== Tech Shapes Group ===== */
+      /* ----- Non-Euclidean Twist ----- */
+      // Slowly warp the corridor along the Z axis over time
+      // (This is a simple non-uniform scale animation for a warped effect)
+      
+      /* ===== Tech Shapes (Enhanced) ===== */
       techShapesGroup = new THREE.Group();
       scene.add(techShapesGroup);
-      // Make ~8 “tech shapes” at a time
-      for (let i = 0; i < 8; i++) {
+      // Create about 6 tech shapes on the sides (they'll be repositioned over time)
+      for (let i = 0; i < 6; i++) {
         const shape = createComplexTechShape();
         resetTechShape(shape);
         techShapesGroup.add(shape);
       }
 
-      /* ===== Glyph Sprites ===== */
+      /* ===== Glyph Sprites (Interactive & Distributed) ===== */
       const glyphLetters = ["Λ", "Δ", "Ω", "ψ", "Σ", "Φ", "Ξ", "Π"];
+      // Create 30 glyphs, positioning them randomly throughout the corridor volume
       for (let i = 0; i < 30; i++) {
         const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
         const sprite = createGlyphSprite(letter);
-
-        // Random corridor position
+        // Distribute across a wider volume:
         sprite.position.set(
-          (Math.random() - 0.5) * CORRIDOR_SIZE * 0.6,
-          (Math.random() - 0.5) * CORRIDOR_SIZE * 0.6,
-          -Math.random() * CORRIDOR_SIZE * 0.5
+          (Math.random()-0.5)*CORRIDOR_SIZE,             // x over full corridor width
+          (Math.random()-0.5)*CORRIDOR_SIZE,             // y over full corridor height
+          -Math.random()*CORRIDOR_SIZE                  // z from 0 to -CORRIDOR_SIZE
         );
-
-        // Store extra data for movement
         sprite.userData = {
           basePosition: sprite.position.clone(),
-          oscillationSpeed: Math.random() * 0.5 + 0.5,
+          oscillationSpeed: Math.random()*0.5 + 0.5,
           velocity: new THREE.Vector3(0, 0, 0),
           lifetime: 0,
-          maxLifetime: 5 + Math.random() * 5
+          maxLifetime: 8 + Math.random()*8  // lasts between 8-16 seconds
         };
         glyphs.push(sprite);
         scene.add(sprite);
@@ -253,7 +251,7 @@
       window.addEventListener("resize", onWindowResize, false);
       document.addEventListener("mousemove", onDocumentMouseMove, false);
 
-      // Nav button toggles
+      // Navigation button events for UI overlay
       const navButtons = document.querySelectorAll("nav button");
       const sections = ["inventory", "map", "email", "codex", "scanner"];
       navButtons.forEach(btn => {
@@ -261,7 +259,7 @@
           const sectionId = btn.getAttribute("data-section");
           sections.forEach(s => {
             const el = document.getElementById(s);
-            el.style.display = (s === sectionId) ? "block" : "none";
+            el.style.display = (s===sectionId) ? "block" : "none";
           });
           navButtons.forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
@@ -269,163 +267,130 @@
       });
     }
 
-    /* 
-      Creates a “techy” background texture: random lines, arcs, shapes 
-      reminiscent of circuit boards or chemical diagrams. 
-    */
+    /* Create a techy background texture (circuit-like lines, arcs, hex codes) */
     function createTechBackgroundTexture(size) {
       const canvas = document.createElement("canvas");
       canvas.width = size;
       canvas.height = size;
       const ctx = canvas.getContext("2d");
 
-      // Fill with a dark base
+      // Dark base
       ctx.fillStyle = "#0d1b2a";
       ctx.fillRect(0, 0, size, size);
 
-      // Draw random “tech lines” in a neon color
-      const lineCount = 20;
+      // Draw random circuit lines
+      const lineCount = 25;
       for (let i = 0; i < lineCount; i++) {
         ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
-        ctx.lineWidth = Math.random() * 2 + 1;
+        ctx.lineWidth = Math.random()*2+1;
         ctx.beginPath();
-        // random start
-        let x1 = Math.random() * size;
-        let y1 = Math.random() * size;
-        // random end
-        let x2 = x1 + (Math.random() - 0.5) * 100;
-        let y2 = y1 + (Math.random() - 0.5) * 100;
+        let x1 = Math.random()*size;
+        let y1 = Math.random()*size;
+        let x2 = x1 + (Math.random()-0.5)*150;
+        let y2 = y1 + (Math.random()-0.5)*150;
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
         ctx.stroke();
       }
 
-      // Draw random arcs/circles
-      const arcCount = 10;
+      // Draw arcs/circles
+      const arcCount = 15;
       for (let i = 0; i < arcCount; i++) {
         ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
-        ctx.lineWidth = Math.random() * 2 + 1;
+        ctx.lineWidth = Math.random()*2+1;
         ctx.beginPath();
-        let cx = Math.random() * size;
-        let cy = Math.random() * size;
-        let r = Math.random() * 30 + 10;
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        let cx = Math.random()*size;
+        let cy = Math.random()*size;
+        let r = Math.random()*40+10;
+        ctx.arc(cx, cy, r, 0, Math.PI*2);
         ctx.stroke();
       }
 
-      // Possibly add some “tech text” or random hex strings
+      // Random hex strings
       const textCount = 10;
       ctx.fillStyle = "rgba(0, 204, 255, 0.25)";
       ctx.font = "14px monospace";
       for (let i = 0; i < textCount; i++) {
-        let tx = Math.random() * size;
-        let ty = Math.random() * size;
-        let hexString = Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase();
+        let tx = Math.random()*size;
+        let ty = Math.random()*size;
+        let hexString = Math.floor(Math.random()*0xffffff).toString(16).toUpperCase();
         ctx.fillText(hexString, tx, ty);
       }
 
       return new THREE.CanvasTexture(canvas);
     }
 
-    /* Helper to add wireframe edges around planes so corridor is visible */
+    /* Helper: Add wireframe edges so the corridor is clearly defined */
     function addEdges(geometry, mesh) {
       const edgesGeo = new THREE.EdgesGeometry(geometry);
       const edgesMat = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.4 });
       const edges = new THREE.LineSegments(edgesGeo, edgesMat);
       mesh.add(edges);
-      corridorEdges.push(edges);
     }
 
-    /* Create a more complex “tech shape” (lines, arcs, etc.) inside a group. */
+    /* Create a more complex, technological tech shape */
     function createComplexTechShape() {
       const group = new THREE.Group();
 
-      // 1) A random shape of connected lines
-      const linePoints = [];
-      const segmentCount = 3 + Math.floor(Math.random() * 3); // 3-5 segments
-      let x = 0, y = 0;
-      linePoints.push(new THREE.Vector3(x, y, 0));
-      for (let i = 0; i < segmentCount; i++) {
-        x += (Math.random() - 0.5) * 60;
-        y += (Math.random() - 0.5) * 60;
-        linePoints.push(new THREE.Vector3(x, y, 0));
-      }
-      const lineGeo = new THREE.BufferGeometry().setFromPoints(linePoints);
-      const lineMat = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.8 });
-      const line = new THREE.Line(lineGeo, lineMat);
-      group.add(line);
+      // Create a chip-like rectangular shape via extruded geometry
+      const shape = new THREE.Shape();
+      shape.moveTo(-15, -10);
+      shape.lineTo(15, -10);
+      shape.lineTo(15, 10);
+      shape.lineTo(-15, 10);
+      shape.lineTo(-15, -10);
+      const extrudeSettings = { depth: 2, bevelEnabled: false };
+      const chipGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      const chipMat = new THREE.MeshBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.8 });
+      const chipMesh = new THREE.Mesh(chipGeo, chipMat);
+      group.add(chipMesh);
 
-      // 2) Possibly add small circles along the line
-      linePoints.forEach(pt => {
-        if (Math.random() < 0.5) {
-          const sphereGeo = new THREE.SphereGeometry(3, 8, 8);
-          const sphereMat = new THREE.MeshBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.8 });
-          const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-          sphere.position.copy(pt);
-          group.add(sphere);
-        }
-      });
-
-      // 3) Add an arc or ring somewhere
-      if (Math.random() < 0.7) {
-        const ringGeo = new THREE.RingGeometry(10, 14, 16);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ccff, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.position.set(
-          (Math.random() - 0.5) * 50,
-          (Math.random() - 0.5) * 50,
-          0
-        );
-        ring.rotation.x = Math.random() * Math.PI;
-        ring.rotation.y = Math.random() * Math.PI;
-        group.add(ring);
+      // Add a few connecting circuit lines on top of the chip
+      for (let i = 0; i < 3; i++) {
+        const start = new THREE.Vector3((Math.random()-0.5)*30, (Math.random()-0.5)*20, 2);
+        const end = new THREE.Vector3((Math.random()-0.5)*30, (Math.random()-0.5)*20, 2);
+        const lineGeo = new THREE.BufferGeometry().setFromPoints([start, end]);
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.7 });
+        const line = new THREE.Line(lineGeo, lineMat);
+        group.add(line);
       }
 
-      // Lifetime info
-      group.userData = {
-        lifetime: 0,
-        maxLifetime: 6 + Math.random() * 6, // 6-12 seconds
-      };
+      group.userData = { lifetime: 0, maxLifetime: 10 + Math.random()*10 };
       return group;
     }
 
-    /* Reposition & reset a tech shape when it “expires.” */
+    /* Reset a tech shape's position, rotation and lifetime */
     function resetTechShape(shape) {
       shape.userData.lifetime = 0;
-      shape.userData.maxLifetime = 6 + Math.random() * 6;
-      // Place shape randomly in corridor
+      shape.userData.maxLifetime = 10 + Math.random()*10;
       shape.position.set(
-        (Math.random() - 0.5) * CORRIDOR_SIZE * 0.6,
-        (Math.random() - 0.5) * CORRIDOR_SIZE * 0.6,
-        -Math.random() * CORRIDOR_SIZE * 0.5
+        (Math.random()-0.5)*CORRIDOR_SIZE*0.8,
+        (Math.random()-0.5)*CORRIDOR_SIZE*0.8,
+        -Math.random()*CORRIDOR_SIZE*0.5
       );
       shape.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
+        Math.random()*Math.PI,
+        Math.random()*Math.PI,
+        Math.random()*Math.PI
       );
-      // Reset opacities
+      // Reset opacities in the shape
       shape.traverse(child => {
-        if (child.material) {
-          child.material.opacity = 0.8;
-        }
+        if(child.material) child.material.opacity = 0.8;
       });
     }
 
-    /* Create a glyph sprite with the specified letter. */
+    /* Create an interactive glyph sprite with the given letter */
     function createGlyphSprite(letter) {
       const canvas = document.createElement("canvas");
       canvas.width = 128;
       canvas.height = 128;
       const ctx = canvas.getContext("2d");
-
       ctx.clearRect(0, 0, 128, 128);
       ctx.font = "100px Arial";
       ctx.fillStyle = "rgba(0,204,255,0.8)";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(letter, 64, 64);
-
       const texture = new THREE.CanvasTexture(canvas);
       const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(material);
@@ -433,68 +398,71 @@
       return sprite;
     }
 
-    /* Window resize handler */
+    /* ===== Window & Mouse Handlers ===== */
     function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.aspect = window.innerWidth/window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    /* Mouse move => update normalized coords & corridor rotation */
     function onDocumentMouseMove(e) {
-      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
+      mouse.x = (e.clientX/window.innerWidth)*2 - 1;
+      mouse.y = -(e.clientY/window.innerHeight)*2 + 1;
       const maxRotation = 0.1;
       targetRotationY = mouse.x * maxRotation;
       targetRotationX = mouse.y * maxRotation;
     }
 
-    /* Main animation loop */
+    /* ===== Animation Loop ===== */
     function animate() {
       requestAnimationFrame(animate);
 
-      // Smooth corridor rotation
+      // ---- Warp the corridor (non-euclidean effect) ----
+      const time = Date.now() * 0.001;
+      // Oscillate the corridor's depth scale slightly
+      corridor.scale.z = 1 + 0.15 * Math.sin(time * 0.3);
+
+      // Slowly rotate the corridor based on mouse movement (for a subtle shift)
       corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
 
-      // Animate glyphs
+      // ---- Update Glyphs (Interactive & Fade Out) ----
       glyphs.forEach(sprite => {
-        // Lifetime & reset if expired
         sprite.userData.lifetime += 0.016;
-        if (sprite.userData.lifetime > sprite.userData.maxLifetime) {
-          // Reposition
+        // Instead of snapping out, reduce opacity gradually as lifetime increases
+        const fade = 1 - (sprite.userData.lifetime / sprite.userData.maxLifetime);
+        sprite.material.opacity = Math.max(fade, 0);
+
+        // When completely faded, reset glyph (reposition and restore opacity)
+        if (fade <= 0.05) {
           sprite.userData.lifetime = 0;
-          sprite.userData.maxLifetime = 5 + Math.random() * 5;
-          const size = CORRIDOR_SIZE;
+          sprite.userData.maxLifetime = 8 + Math.random()*8;
           sprite.position.set(
-            (Math.random() - 0.5) * size * 0.6,
-            (Math.random() - 0.5) * size * 0.6,
-            -Math.random() * size * 0.5
+            (Math.random()-0.5)*CORRIDOR_SIZE,
+            (Math.random()-0.5)*CORRIDOR_SIZE,
+            -Math.random()*CORRIDOR_SIZE
           );
           sprite.userData.basePosition.copy(sprite.position);
           sprite.userData.velocity.set(0, 0, 0);
+          sprite.material.opacity = 1.0;
         }
 
-        // Oscillation
-        const t = Date.now() * 0.001 * sprite.userData.oscillationSpeed;
-        const offsetX = Math.sin(t) * 10;
-        const offsetY = Math.cos(t) * 10;
-        sprite.position.x = sprite.userData.basePosition.x + offsetX;
-        sprite.position.y = sprite.userData.basePosition.y + offsetY;
+        // Oscillate slightly around the base position
+        const t = Date.now()*0.001 * sprite.userData.oscillationSpeed;
+        sprite.position.x = sprite.userData.basePosition.x + Math.sin(t)*10;
+        sprite.position.y = sprite.userData.basePosition.y + Math.cos(t)*10;
 
-        // Convert glyph position to screen space
+        // Convert glyph position to screen space for interactivity
         const pos = sprite.position.clone();
         pos.project(camera);
-        const glyphScreenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
-        const glyphScreenY = (-pos.y * 0.5 + 0.5) * window.innerHeight;
-        // Mouse screen coords
-        const mouseScreenX = (mouse.x + 1) * 0.5 * window.innerWidth;
-        const mouseScreenY = (-mouse.y + 1) * 0.5 * window.innerHeight;
-        const dist = Math.hypot(glyphScreenX - mouseScreenX, glyphScreenY - mouseScreenY);
+        const glyphScreenX = (pos.x*0.5+0.5)*window.innerWidth;
+        const glyphScreenY = (-pos.y*0.5+0.5)*window.innerHeight;
+        const mouseScreenX = (mouse.x+1)*0.5*window.innerWidth;
+        const mouseScreenY = (-mouse.y+1)*0.5*window.innerHeight;
+        const dist = Math.hypot(glyphScreenX-mouseScreenX, glyphScreenY-mouseScreenY);
 
-        // If close to mouse => push away
-        if (dist < repulsionDistance) {
+        // If mouse is close, push the glyph away (active interaction)
+        if(dist < repulsionDistance) {
           const dx = glyphScreenX - mouseScreenX;
           const dy = glyphScreenY - mouseScreenY;
           const angle = Math.atan2(dy, dx);
@@ -503,28 +471,23 @@
           sprite.userData.velocity.x += pushX;
           sprite.userData.velocity.y += pushY;
         }
-
-        // Apply velocity as 3D offset, dampen velocity
+        // Apply velocity and friction
         sprite.userData.velocity.multiplyScalar(friction);
-        // We'll interpret velocity.x as a shift in X, velocity.y as a shift in Y in 3D
         sprite.position.x += sprite.userData.velocity.x;
         sprite.position.y += sprite.userData.velocity.y;
       });
 
-      // Animate tech shapes (fade out, then reset)
+      // ---- Update Tech Shapes (Fade Out & Reset) ----
       techShapesGroup.children.forEach(shape => {
         shape.userData.lifetime += 0.016;
         const ratio = shape.userData.lifetime / shape.userData.maxLifetime;
-        // If expired => reset
-        if (ratio >= 1) {
+        if(ratio >= 1) {
           resetTechShape(shape);
         } else {
-          // Fade out near the end
+          // Gradually fade out as lifetime nears its end
           const fade = 1 - ratio;
           shape.traverse(child => {
-            if (child.material) {
-              child.material.opacity = 0.8 * fade;
-            }
+            if(child.material) child.material.opacity = 0.8 * fade;
           });
         }
       });
