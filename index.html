@@ -38,6 +38,7 @@
       box-shadow: 0 0 10px rgba(0,204,255,0.5);
       backdrop-filter: blur(5px);
     }
+    /* Initially hide buttons with a slight upward offset */
     nav button {
       background: transparent;
       border: 2px solid var(--accent-color);
@@ -48,6 +49,20 @@
       text-transform: uppercase;
       transition: background 0.3s, color 0.3s, transform 0.3s;
       outline: none;
+      opacity: 0;
+      transform: translateY(-20px);
+      animation: buttonFadeIn 0.8s forwards;
+    }
+    /* Staggered delays – center "email" appears first */
+    nav button[data-section="email"] { animation-delay: 2.2s; }
+    nav button[data-section="inventory"] { animation-delay: 2.4s; }
+    nav button[data-section="map"] { animation-delay: 2.6s; }
+    nav button[data-section="codex"] { animation-delay: 2.8s; }
+    nav button[data-section="scanner"] { animation-delay: 3.0s; }
+
+    @keyframes buttonFadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     nav button:hover,
     nav button.active {
@@ -92,21 +107,35 @@
       line-height: 1.6em;
     }
     
-    /* ===== Ripple Effect ===== */
+    /* ===== Refined Ripple Effect ===== */
     .ripple {
       position: absolute;
       border-radius: 50%;
-      background: rgba(0, 204, 255, 0.5);
+      background: radial-gradient(circle, rgba(0,204,255,0.45) 15%, rgba(0,204,255,0.2) 50%, rgba(0,204,255,0) 70%);
       transform: scale(0);
       pointer-events: none;
-      animation: ripple-effect 0.8s linear;
+      animation: ripple-effect 1.2s ease-out;
       z-index: 50;
     }
+    .ripple::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border: 1px dashed rgba(0,204,255,0.35);
+      border-radius: 50%;
+      animation: ripple-lines 1.2s ease-out;
+    }
     @keyframes ripple-effect {
-      to {
-        transform: scale(4);
-        opacity: 0;
-      }
+      0% { transform: scale(0); opacity: 0.95; }
+      50% { transform: scale(1.8); opacity: 0.7; }
+      100% { transform: scale(3.5); opacity: 0; }
+    }
+    @keyframes ripple-lines {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(3.5); opacity: 0; }
     }
   </style>
 </head>
@@ -169,6 +198,9 @@
     const repulsionDistance = 120; 
     const repulsionForce = 1.5;
     const friction = 0.93;
+
+    // Variables for loading sequence
+    let loadingStartTime = 0; // Will be set at end of init()
 
     init();
     animate();
@@ -257,19 +289,23 @@
       // === Left Wall ===
       leftWallMesh = new THREE.Mesh(planeGeo, leftWallMat);
       leftWallMesh.rotation.y = Math.PI / 2;
-      leftWallMesh.position.x = -CORRIDOR_SIZE / 2;
+      // Start off-screen (shifted left by 500 units)
+      leftWallMesh.position.x = -CORRIDOR_SIZE / 2 - 500;
       corridor.add(leftWallMesh);
 
       // === Right Wall ===
       rightWallMesh = new THREE.Mesh(planeGeo, rightWallMat);
       rightWallMesh.rotation.y = -Math.PI / 2;
-      rightWallMesh.position.x = CORRIDOR_SIZE / 2;
+      // Start off-screen (shifted right by 500 units)
+      rightWallMesh.position.x = CORRIDOR_SIZE / 2 + 500;
       corridor.add(rightWallMesh);
 
       // ========== SCROLLING PLEXUS ==========
       plexusGroup = createScrollingPlexus();
       plexusGroup.rotation.x = -0.2;
       plexusGroup.renderOrder = 1;
+      // Initially hidden (scaled to 0)
+      plexusGroup.scale.set(0, 0, 0);
       scene.add(plexusGroup);
 
       // ====== GLYPH SPRITES (30 total) ======
@@ -321,6 +357,9 @@
           });
         });
       });
+      
+      // Set the starting time for the loading sequence
+      loadingStartTime = Date.now() * 0.001;
     }
 
     /* ============= CREATE SCROLLING PLEXUS ============= */
@@ -493,16 +532,37 @@
     function animate() {
       requestAnimationFrame(animate);
       const time = Date.now() * 0.001;
+      const elapsedTime = time - loadingStartTime;
 
-      // Smooth corridor rotation
+      // Smooth corridor rotation from mouse
       corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
+
+      // Animate walls sliding in (first 2 seconds)
+      if (elapsedTime < 2) {
+        const progress = elapsedTime / 2;
+        leftWallMesh.position.x = (-CORRIDOR_SIZE/2 - 500) + progress * 500; // from off-screen to target
+        rightWallMesh.position.x = (CORRIDOR_SIZE/2 + 500) - progress * 500;
+      } else {
+        leftWallMesh.position.x = -CORRIDOR_SIZE/2;
+        rightWallMesh.position.x = CORRIDOR_SIZE/2;
+      }
 
       // Scroll the code textures on walls
       floorTexture.offset.y += SCROLL_SPEED_FLOOR;
       leftWallTexture.offset.y += SCROLL_SPEED_CODE;
       rightWallTexture.offset.y += SCROLL_SPEED_CODE;
       ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.5;
+
+      // Animate plexus appearance (scale up between 3 and 4 seconds)
+      if (elapsedTime < 3) {
+        plexusGroup.scale.set(0, 0, 0);
+      } else if (elapsedTime >= 3 && elapsedTime < 4) {
+        const s = (elapsedTime - 3) / 1;
+        plexusGroup.scale.set(s, s, s);
+      } else {
+        plexusGroup.scale.set(1, 1, 1);
+      }
 
       // Update the scrolling plexus
       if (plexusGroup && plexusGroup.children.length > 0) {
@@ -665,7 +725,6 @@
       return sprite;
     }
 
-    // ===== Add Ripple Effect on Click =====
     document.addEventListener("click", function(e) {
       const ripple = document.createElement("div");
       ripple.classList.add("ripple");
@@ -675,7 +734,7 @@
       ripple.style.top = e.clientY - diameter / 2 + "px";
       document.body.appendChild(ripple);
       ripple.addEventListener("animationend", () => {
-        ripple.parentElement.removeChild(ripple);
+        ripple.remove();
       });
     });
   </script>
