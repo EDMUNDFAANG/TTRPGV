@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Animus Corridor Simulation - Non-Euclidean</title>
+  <title>Animus Corridor Simulation</title>
   <!-- Three.js from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
@@ -118,21 +118,26 @@
   <!-- ===== Three.js Scene ===== -->
   <script>
     let scene, camera, renderer;
-    let corridor;              // main corridor group
-    let corridorTexture;       // our scrolling texture
-    let techShapesGroup;       // tech panels along the sides
-    let motionLinesGroup;      // horizontal motion lines on the floor
-    let glyphs = [];           // interactive glyph sprites
+    let corridor; // main corridor group
+    let floorMesh, ceilingMesh, leftWallMesh, rightWallMesh;
+    let glyphs = [];
 
-    // Configurations
-    const CORRIDOR_SIZE = 2000;
+    const CORRIDOR_SIZE = 2500;
     const repulsionDistance = 120; // in screen pixels
-    const repulsionForce = 1.5;      // push strength for glyphs
+    const repulsionForce = 1.5;
     const friction = 0.93;
 
-    // Mouse & rotation targets
+    // Separate scroll speeds for each face (slower overall)
+    const SCROLL_SPEED_FLOOR = 0.0005;
+    const SCROLL_SPEED_WALLS = 0.0005;
+    const SCROLL_SPEED_CEILING = 0.0005;
+
+    // Mouse & rotation
     let mouse = new THREE.Vector2(0, 0);
     let targetRotationX = 0, targetRotationY = 0;
+
+    // We'll store each face's texture so we can scroll them individually
+    let floorTexture, ceilingTexture, leftWallTexture, rightWallTexture;
 
     init();
     animate();
@@ -141,13 +146,12 @@
       /* ===== Scene & Fog ===== */
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0d1b2a);
-      // Slightly lighter fog for better visibility of the warp
-      scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0008);
+      scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0007);
 
       /* ===== Camera ===== */
-      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 5000);
-      // Position camera so that you "watch" the corridor coming toward you
-      camera.position.set(0, 300, 1500);
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+      // Position camera so that we see the corridor from “inside” but a bit forward
+      camera.position.set(0, 0, 1800);
       camera.lookAt(0, 0, 0);
 
       /* ===== Renderer ===== */
@@ -162,87 +166,98 @@
       directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
 
-      /* ===== Corridor (Non-Euclidean) ===== */
+      /* ===== Corridor Group ===== */
       corridor = new THREE.Group();
-      const half = CORRIDOR_SIZE / 2;
-      // Create and store the techy texture so we can scroll it later.
-      corridorTexture = createTechBackgroundTexture(512);
-      corridorTexture.wrapS = corridorTexture.wrapT = THREE.RepeatWrapping;
-      corridorTexture.repeat.set(2, 2);
+      scene.add(corridor);
 
-      const corridorMat = new THREE.MeshPhongMaterial({
-        map: corridorTexture,
+      // We create 4 separate textures so we can scroll them differently
+      floorTexture = createTechBackgroundTexture(512);
+      floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+      floorTexture.repeat.set(2, 2);
+
+      ceilingTexture = createTechBackgroundTexture(512);
+      ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
+      ceilingTexture.repeat.set(2, 2);
+
+      leftWallTexture = createTechBackgroundTexture(512);
+      leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping;
+      leftWallTexture.repeat.set(2, 2);
+
+      rightWallTexture = createTechBackgroundTexture(512);
+      rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
+      rightWallTexture.repeat.set(2, 2);
+
+      // Materials
+      const floorMat = new THREE.MeshPhongMaterial({
+        map: floorTexture,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.65
+        opacity: 0.7
+      });
+      const ceilingMat = new THREE.MeshPhongMaterial({
+        map: ceilingTexture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.7
+      });
+      const leftWallMat = new THREE.MeshPhongMaterial({
+        map: leftWallTexture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.7
+      });
+      const rightWallMat = new THREE.MeshPhongMaterial({
+        map: rightWallTexture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.7
       });
 
       // Floor
       const floorGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
-      const floor = new THREE.Mesh(floorGeo, corridorMat);
-      floor.rotation.x = -Math.PI / 2;
-      floor.position.y = -half;
-      corridor.add(floor);
-      addEdges(floorGeo, floor);
+      floorMesh = new THREE.Mesh(floorGeo, floorMat);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.position.y = -CORRIDOR_SIZE / 2;
+      corridor.add(floorMesh);
 
       // Ceiling
       const ceilingGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
-      const ceiling = new THREE.Mesh(ceilingGeo, corridorMat);
-      ceiling.rotation.x = Math.PI / 2;
-      ceiling.position.y = half;
-      corridor.add(ceiling);
-      addEdges(ceilingGeo, ceiling);
+      ceilingMesh = new THREE.Mesh(ceilingGeo, ceilingMat);
+      ceilingMesh.rotation.x = Math.PI / 2;
+      ceilingMesh.position.y = CORRIDOR_SIZE / 2;
+      corridor.add(ceilingMesh);
 
       // Left Wall
       const leftWallGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
-      const leftWall = new THREE.Mesh(leftWallGeo, corridorMat);
-      leftWall.rotation.y = Math.PI / 2;
-      leftWall.position.x = -half;
-      corridor.add(leftWall);
-      addEdges(leftWallGeo, leftWall);
+      leftWallMesh = new THREE.Mesh(leftWallGeo, leftWallMat);
+      leftWallMesh.rotation.y = Math.PI / 2;
+      leftWallMesh.position.x = -CORRIDOR_SIZE / 2;
+      corridor.add(leftWallMesh);
 
       // Right Wall
       const rightWallGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
-      const rightWall = new THREE.Mesh(rightWallGeo, corridorMat);
-      rightWall.rotation.y = -Math.PI / 2;
-      rightWall.position.x = half;
-      corridor.add(rightWall);
-      addEdges(rightWallGeo, rightWall);
+      rightWallMesh = new THREE.Mesh(rightWallGeo, rightWallMat);
+      rightWallMesh.rotation.y = -Math.PI / 2;
+      rightWallMesh.position.x = CORRIDOR_SIZE / 2;
+      corridor.add(rightWallMesh);
 
-      // (No back wall so the corridor recedes into the fog)
-      scene.add(corridor);
+      // No back wall => extends into fog
 
-      /* ----- Scrolling Corridor Texture ----- */
-      // In animate(), we'll continuously update corridorTexture.offset.y
+      /* ===== Glyph Sprites (More Visible, More Archaic Symbols) ===== */
+      const glyphLetters = [
+        // Greek
+        "Λ","Δ","Ω","ψ","Σ","Φ","Ξ","Π",
+        // Runes
+        "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
+        // Misc. symbols
+        "𐎠","𐎣","𐎫","⸮","§","¤","※","✦"
+      ];
 
-      /* ===== Tech Shapes (Coherent Tech Panels) ===== */
-      techShapesGroup = new THREE.Group();
-      scene.add(techShapesGroup);
-      // Create about 6 tech panels along the sides
-      for (let i = 0; i < 6; i++) {
-        const shape = createTechPanel();
-        resetTechShape(shape);
-        techShapesGroup.add(shape);
-      }
-
-      /* ===== Motion Lines (Simulate Walking Forward) ===== */
-      motionLinesGroup = new THREE.Group();
-      scene.add(motionLinesGroup);
-      // Create 10 horizontal lines on the floor that move forward
-      for (let i = 0; i < 10; i++) {
-        const line = createMotionLine();
-        // Random z position within corridor
-        line.position.z = -Math.random() * CORRIDOR_SIZE;
-        motionLinesGroup.add(line);
-      }
-
-      /* ===== Glyph Sprites (Interactive & Distributed) ===== */
-      const glyphLetters = ["Λ", "Δ", "Ω", "ψ", "Σ", "Φ", "Ξ", "Π"];
-      // Create 30 glyphs, positioned throughout the corridor volume
-      for (let i = 0; i < 30; i++) {
+      // Create ~40 glyphs
+      for (let i = 0; i < 40; i++) {
         const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
         const sprite = createGlyphSprite(letter);
-        // Distribute in a 3D volume:
+        // Spread them throughout corridor
         sprite.position.set(
           (Math.random() - 0.5) * CORRIDOR_SIZE,
           (Math.random() - 0.5) * CORRIDOR_SIZE,
@@ -253,17 +268,17 @@
           oscillationSpeed: Math.random() * 0.5 + 0.5,
           velocity: new THREE.Vector3(0, 0, 0),
           lifetime: 0,
-          maxLifetime: 8 + Math.random() * 8  // lasts between 8-16 seconds
+          maxLifetime: 12 + Math.random() * 12  // 12-24 seconds
         };
         glyphs.push(sprite);
         scene.add(sprite);
       }
 
-      /* ===== Event Listeners ===== */
+      /* ===== Listeners ===== */
       window.addEventListener("resize", onWindowResize, false);
       document.addEventListener("mousemove", onDocumentMouseMove, false);
 
-      // Navigation button events for UI overlay
+      // Nav button toggles
       const navButtons = document.querySelectorAll("nav button");
       const sections = ["inventory", "map", "email", "codex", "scanner"];
       navButtons.forEach(btn => {
@@ -290,7 +305,7 @@
       ctx.fillStyle = "#0d1b2a";
       ctx.fillRect(0, 0, size, size);
 
-      // Draw random circuit lines
+      // Random circuit lines
       const lineCount = 25;
       for (let i = 0; i < lineCount; i++) {
         ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
@@ -305,7 +320,7 @@
         ctx.stroke();
       }
 
-      // Draw arcs/circles
+      // Arcs/circles
       const arcCount = 15;
       for (let i = 0; i < arcCount; i++) {
         ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
@@ -332,66 +347,7 @@
       return new THREE.CanvasTexture(canvas);
     }
 
-    /* Helper: Add wireframe edges so the corridor is clearly defined */
-    function addEdges(geometry, mesh) {
-      const edgesGeo = new THREE.EdgesGeometry(geometry);
-      const edgesMat = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.4 });
-      const edges = new THREE.LineSegments(edgesGeo, edgesMat);
-      mesh.add(edges);
-    }
-
-    /* Create a coherent tech panel (chip-like shape with circuit lines) */
-    function createTechPanel() {
-      const group = new THREE.Group();
-
-      // Create a chip-like rectangular shape using extruded geometry
-      const shape = new THREE.Shape();
-      shape.moveTo(-20, -15);
-      shape.lineTo(20, -15);
-      shape.lineTo(20, 15);
-      shape.lineTo(-20, 15);
-      shape.lineTo(-20, -15);
-      const extrudeSettings = { depth: 4, bevelEnabled: false };
-      const chipGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-      const chipMat = new THREE.MeshBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.8 });
-      const chipMesh = new THREE.Mesh(chipGeo, chipMat);
-      group.add(chipMesh);
-
-      // Add a few consistent circuit lines on the panel
-      for (let i = 0; i < 2; i++) {
-        const start = new THREE.Vector3(-15, -10 + i * 10, 4);
-        const end = new THREE.Vector3(15, -10 + i * 10, 4);
-        const lineGeo = new THREE.BufferGeometry().setFromPoints([start, end]);
-        const lineMat = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.8 });
-        const line = new THREE.Line(lineGeo, lineMat);
-        group.add(line);
-      }
-
-      group.userData = { lifetime: 0, maxLifetime: 12 + Math.random() * 8 }; // lasts 12-20 seconds
-      return group;
-    }
-
-    /* Reset a tech panel's position, rotation and lifetime */
-    function resetTechShape(shape) {
-      shape.userData.lifetime = 0;
-      shape.userData.maxLifetime = 12 + Math.random() * 8;
-      shape.position.set(
-        (Math.random() - 0.5) * CORRIDOR_SIZE * 0.8,
-        (Math.random() - 0.5) * CORRIDOR_SIZE * 0.8,
-        -Math.random() * CORRIDOR_SIZE * 0.5
-      );
-      shape.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
-      );
-      // Reset opacities in the shape
-      shape.traverse(child => {
-        if (child.material) child.material.opacity = 0.8;
-      });
-    }
-
-    /* Create an interactive glyph sprite with the given letter */
+    /* Create a glyph sprite with the given letter (full opacity). */
     function createGlyphSprite(letter) {
       const canvas = document.createElement("canvas");
       canvas.width = 128;
@@ -399,33 +355,18 @@
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, 128, 128);
       ctx.font = "100px Arial";
-      ctx.fillStyle = "rgba(0,204,255,0.8)";
+      ctx.fillStyle = "rgba(0,204,255,1.0)";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(letter, 64, 64);
+
       const texture = new THREE.CanvasTexture(canvas);
       const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-      // Ensure sizeAttenuation is on so sprites scale with perspective
-      material.sizeAttenuation = true;
+      material.sizeAttenuation = true; // so sprite scales with perspective
       const sprite = new THREE.Sprite(material);
-      // Initial scale; this will be updated based on depth in animate()
+      // We'll adjust scale in the animate() loop based on distance
       sprite.scale.set(100, 100, 1);
       return sprite;
-    }
-
-    /* Create a motion line to simulate forward movement along the floor */
-    function createMotionLine() {
-      const geometry = new THREE.BufferGeometry();
-      const vertices = new Float32Array([
-        -CORRIDOR_SIZE / 2, 0, 0,
-         CORRIDOR_SIZE / 2, 0, 0
-      ]);
-      geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-      const material = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.6 });
-      const line = new THREE.Line(geometry, material);
-      // Position the line on the floor (slightly above to avoid z-fighting)
-      line.position.y = -CORRIDOR_SIZE / 2 + 1;
-      return line;
     }
 
     /* ===== Window & Mouse Handlers ===== */
@@ -438,7 +379,7 @@
     function onDocumentMouseMove(e) {
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-      const maxRotation = 0.1;
+      const maxRotation = 0.08;
       targetRotationY = mouse.x * maxRotation;
       targetRotationX = mouse.y * maxRotation;
     }
@@ -447,38 +388,34 @@
     function animate() {
       requestAnimationFrame(animate);
 
+      // Corridor warp
       const time = Date.now() * 0.001;
+      corridor.scale.z = 1 + 0.15 * Math.sin(time * 0.2);
 
-      // ---- Scroll the Corridor Texture (simulate moving forward) ----
-      corridorTexture.offset.y += 0.002; // Adjust speed as desired
-
-      // ---- Warp the corridor (non-euclidean effect) ----
-      corridor.scale.z = 1 + 0.15 * Math.sin(time * 0.3);
-      // Slowly rotate corridor based on mouse movement for a subtle shift
+      // Smooth rotation
       corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
 
-      // ---- Update Motion Lines (simulate forward movement) ----
-      motionLinesGroup.children.forEach(line => {
-        // Move line forward (increase z)
-        line.position.z += 4;
-        // When a line passes the camera, reposition it far back
-        if (line.position.z > 200) {
-          line.position.z = -CORRIDOR_SIZE;
-        }
-      });
+      // SCROLL each face’s texture so it looks like we’re moving forward
+      // Floor => offset in Y
+      floorTexture.offset.y += SCROLL_SPEED_FLOOR;
+      // Ceiling => offset in Y (opposite direction)
+      ceilingTexture.offset.y -= SCROLL_SPEED_CEILING;
+      // Left Wall => offset in X
+      leftWallTexture.offset.x += SCROLL_SPEED_WALLS;
+      // Right Wall => offset in X (opposite direction)
+      rightWallTexture.offset.x -= SCROLL_SPEED_WALLS;
 
-      // ---- Update Glyphs (Interactive, Fade Out & Depth-Based Scaling) ----
+      // ---- Update Glyphs (Fade, Interactivity, Distance-Based Scale) ----
       glyphs.forEach(sprite => {
         sprite.userData.lifetime += 0.016;
-        // Fade out gradually over lifetime
         const fade = 1 - (sprite.userData.lifetime / sprite.userData.maxLifetime);
         sprite.material.opacity = Math.max(fade, 0);
 
-        // When nearly faded out, reset the glyph
+        // If nearly invisible, reset
         if (fade <= 0.05) {
           sprite.userData.lifetime = 0;
-          sprite.userData.maxLifetime = 8 + Math.random() * 8;
+          sprite.userData.maxLifetime = 12 + Math.random() * 12;
           sprite.position.set(
             (Math.random() - 0.5) * CORRIDOR_SIZE,
             (Math.random() - 0.5) * CORRIDOR_SIZE,
@@ -489,12 +426,12 @@
           sprite.material.opacity = 1.0;
         }
 
-        // Oscillate slightly around the base position
+        // Gentle oscillation
         const t = Date.now() * 0.001 * sprite.userData.oscillationSpeed;
         sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 10;
         sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 10;
 
-        // Convert glyph position to screen space for interactivity
+        // Convert to screen coords for mouse-based repulsion
         const pos = sprite.position.clone();
         pos.project(camera);
         const glyphScreenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
@@ -503,7 +440,7 @@
         const mouseScreenY = (-mouse.y + 1) * 0.5 * window.innerHeight;
         const dist = Math.hypot(glyphScreenX - mouseScreenX, glyphScreenY - mouseScreenY);
 
-        // If mouse is close, push the glyph away
+        // Repulsion
         if (dist < repulsionDistance) {
           const dx = glyphScreenX - mouseScreenX;
           const dy = glyphScreenY - mouseScreenY;
@@ -513,31 +450,20 @@
           sprite.userData.velocity.x += pushX;
           sprite.userData.velocity.y += pushY;
         }
-        // Apply velocity with friction
+        // Apply velocity + friction
         sprite.userData.velocity.multiplyScalar(friction);
         sprite.position.x += sprite.userData.velocity.x;
         sprite.position.y += sprite.userData.velocity.y;
 
-        // ---- Vary Glyph Scale Based on Distance ----
-        let d = camera.position.distanceTo(sprite.position);
-        // Interpolate scale between 200 (close, d <= 500) and 50 (far, d >= 1500)
-        let f = THREE.MathUtils.clamp((d - 500) / 1000, 0, 1);
-        let scaleVal = 200 * (1 - f) + 50 * f;
-        sprite.scale.set(scaleVal, scaleVal, 1);
-      });
-
-      // ---- Update Tech Panels (Fade Out & Reset) ----
-      techShapesGroup.children.forEach(shape => {
-        shape.userData.lifetime += 0.016;
-        const ratio = shape.userData.lifetime / shape.userData.maxLifetime;
-        if (ratio >= 1) {
-          resetTechShape(shape);
-        } else {
-          const fade = 1 - ratio;
-          shape.traverse(child => {
-            if (child.material) child.material.opacity = 0.8 * fade;
-          });
-        }
+        // Distance-based scaling: bigger when close, smaller when far
+        const d = camera.position.distanceTo(sprite.position);
+        // Interpolate scale between ~200 (close) and ~50 (far)
+        const minDist = 500, maxDist = 2000;
+        const scaleClose = 200, scaleFar = 50;
+        const clampDist = THREE.MathUtils.clamp(d, minDist, maxDist);
+        const alpha = (clampDist - minDist) / (maxDist - minDist); // 0..1
+        const finalScale = scaleClose * (1 - alpha) + scaleFar * alpha;
+        sprite.scale.set(finalScale, finalScale, 1);
       });
 
       renderer.render(scene, camera);
