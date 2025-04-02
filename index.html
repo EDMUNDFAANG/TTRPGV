@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>3D Plexus Corridor</title>
+  <title>Animus Corridor Simulation</title>
   <!-- Three.js from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     /* ===== Reset & Base Styles ===== */
     html, body {
-      margin: 0;
+      margin: 0; 
       padding: 0;
       overflow: hidden;
       background: #0d1b2a;
@@ -18,6 +18,7 @@
     canvas {
       display: block;
     }
+
     /* ===== Navigation Bar ===== */
     nav {
       position: fixed;
@@ -48,6 +49,7 @@
       color: #000;
       transform: scale(1.05);
     }
+
     /* ===== Centered Content Card ===== */
     .content-card {
       position: fixed;
@@ -90,6 +92,7 @@
     <button data-section="codex">Codex</button>
     <button data-section="scanner">Scanner</button>
   </nav>
+
   <!-- ===== Content Cards ===== -->
   <div id="inventory" class="content-card">
     <h1>Inventory</h1>
@@ -111,30 +114,34 @@
     <h1>Scanner</h1>
     <p>Scanner details go here.</p>
   </div>
+
   <!-- ===== Three.js Scene ===== -->
   <script>
     let scene, camera, renderer;
-    // We'll store our four corridor planes in an array.
-    let corridorPlanes = [];
-    // We'll store the original vertex positions for each plane here.
-    let originalPositions = [];
-
-    // Corridor configuration
-    const CORRIDOR_SIZE = 3000;
-    const SEGMENTS = 30;
-    const WAVE_AMPLITUDE = 20;
-    const WAVE_SPEED = 0.5;
-
-    // Glyph configuration
+    let corridor;
+    let floorMesh, ceilingMesh, leftWallMesh, rightWallMesh;
     let glyphs = [];
-    const GLYPH_COUNT = 30;
-    const repulsionDistance = 120;
-    const repulsionForce = 1.5;
-    const friction = 0.93;
 
-    // Scene, camera, and mouse control
+    const CORRIDOR_SIZE = 2500;
+
+    // Mouse & rotation targets
     let mouse = new THREE.Vector2(0, 0);
     let targetRotationX = 0, targetRotationY = 0;
+
+    // Textures for individual faces
+    let floorTexture, ceilingTexture, leftWallTexture, rightWallTexture;
+
+    // Scrolling speeds
+    const SCROLL_SPEED_FLOOR = 0.0005;
+    const SCROLL_SPEED_CODE = 0.0005;
+
+    // Plexus group
+    let plexusGroup;
+
+    // Repulsion for glyphs
+    const repulsionDistance = 120; 
+    const repulsionForce = 1.5;
+    const friction = 0.93;
 
     init();
     animate();
@@ -146,8 +153,8 @@
       scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0007);
 
       // Camera
-      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 20000);
-      camera.position.set(0, 0, 4000);
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+      camera.position.set(0, 0, 1800);
       camera.lookAt(0, 0, 0);
 
       // Renderer
@@ -162,72 +169,118 @@
       directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
 
-      // Create corridor planes (floor, ceiling, left, right)
-      const corridorGroup = new THREE.Group();
-      scene.add(corridorGroup);
+      // Corridor Group
+      corridor = new THREE.Group();
+      scene.add(corridor);
 
-      // Floor
-      const floorPlane = createPlexusPlane(CORRIDOR_SIZE, CORRIDOR_SIZE, SEGMENTS, SEGMENTS, 0x00ccff);
-      floorPlane.mesh.rotation.x = -Math.PI/2;
-      floorPlane.mesh.position.y = -CORRIDOR_SIZE/2;
-      corridorGroup.add(floorPlane.mesh);
-      corridorPlanes.push(floorPlane);
-      
-      // Ceiling
-      const ceilingPlane = createPlexusPlane(CORRIDOR_SIZE, CORRIDOR_SIZE, SEGMENTS, SEGMENTS, 0x00ccff);
-      ceilingPlane.mesh.rotation.x = Math.PI/2;
-      ceilingPlane.mesh.position.y = CORRIDOR_SIZE/2;
-      corridorGroup.add(ceilingPlane.mesh);
-      corridorPlanes.push(ceilingPlane);
+      // Floor & Ceiling use the circuit texture
+      floorTexture = createCircuitTexture(512);
+      floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+      floorTexture.repeat.set(2, 2);
 
-      // Left Wall
-      const leftWallPlane = createPlexusPlane(CORRIDOR_SIZE, CORRIDOR_SIZE, SEGMENTS, SEGMENTS, 0x00ccff);
-      leftWallPlane.mesh.rotation.y = Math.PI/2;
-      leftWallPlane.mesh.position.x = -CORRIDOR_SIZE/2;
-      corridorGroup.add(leftWallPlane.mesh);
-      corridorPlanes.push(leftWallPlane);
+      ceilingTexture = createCircuitTexture(512);
+      ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
+      ceilingTexture.repeat.set(2, 2);
 
-      // Right Wall
-      const rightWallPlane = createPlexusPlane(CORRIDOR_SIZE, CORRIDOR_SIZE, SEGMENTS, SEGMENTS, 0x00ccff);
-      rightWallPlane.mesh.rotation.y = -Math.PI/2;
-      rightWallPlane.mesh.position.x = CORRIDOR_SIZE/2;
-      corridorGroup.add(rightWallPlane.mesh);
-      corridorPlanes.push(rightWallPlane);
+      // Walls use a code texture (tightly packed)
+      leftWallTexture = createCodeTexture(512);
+      leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping;
+      leftWallTexture.repeat.set(4, 5);
 
-      // (No back wall)
+      rightWallTexture = createCodeTexture(512);
+      rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
+      rightWallTexture.repeat.set(4, 5);
 
-      // Create glyphs (archaic symbols only)
+      const floorMat = new THREE.MeshPhongMaterial({
+        map: floorTexture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.7
+      });
+      const ceilingMat = new THREE.MeshPhongMaterial({
+        map: ceilingTexture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.7
+      });
+      const leftWallMat = new THREE.MeshPhongMaterial({
+        map: leftWallTexture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.7
+      });
+      const rightWallMat = new THREE.MeshPhongMaterial({
+        map: rightWallTexture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.7
+      });
+
+      // Create floor, ceiling, and walls
+      const floorGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
+      floorMesh = new THREE.Mesh(floorGeo, floorMat);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.position.y = -CORRIDOR_SIZE / 2; // y = -1250
+      corridor.add(floorMesh);
+
+      const ceilingGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
+      ceilingMesh = new THREE.Mesh(ceilingGeo, ceilingMat);
+      ceilingMesh.rotation.x = Math.PI / 2;
+      ceilingMesh.position.y = CORRIDOR_SIZE / 2; // y = +1250
+      corridor.add(ceilingMesh);
+
+      const leftWallGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
+      leftWallMesh = new THREE.Mesh(leftWallGeo, leftWallMat);
+      leftWallMesh.rotation.y = Math.PI / 2;
+      leftWallMesh.position.x = -CORRIDOR_SIZE / 2; // x = -1250
+      corridor.add(leftWallMesh);
+
+      const rightWallGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
+      rightWallMesh = new THREE.Mesh(rightWallGeo, rightWallMat);
+      rightWallMesh.rotation.y = -Math.PI / 2;
+      rightWallMesh.position.x = CORRIDOR_SIZE / 2; // x = +1250
+      corridor.add(rightWallMesh);
+
+      // Create a larger, more connected scrolling plexus around the user
+      plexusGroup = createScrollingPlexus();
+      scene.add(plexusGroup);
+
+      /* Glyph Sprites (Archaic symbols only, 30 total) */
       const glyphLetters = [
         "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
         "𐎠","𐎣","𐎫"
       ];
-      for (let i = 0; i < GLYPH_COUNT; i++) {
+      for (let i = 0; i < 30; i++) {
         const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
         const sprite = createGlyphSprite(letter);
-        // Position them in a large volume so they're spread out
-        sprite.position.set(
-          (Math.random()-0.5) * CORRIDOR_SIZE * 2,
-          (Math.random()-0.5) * CORRIDOR_SIZE * 2,
-          -Math.random() * CORRIDOR_SIZE * 4
-        );
+        // 50% chance to spawn on a wall, otherwise in volume
+        if (Math.random() < 0.5) {
+          spawnGlyphOnWall(sprite);
+        } else {
+          sprite.position.set(
+            (Math.random() - 0.5) * CORRIDOR_SIZE,
+            (Math.random() - 0.5) * CORRIDOR_SIZE,
+            -Math.random() * CORRIDOR_SIZE
+          );
+        }
         sprite.userData = {
           basePosition: sprite.position.clone(),
-          oscillationSpeed: Math.random()*0.5 + 0.5,
-          velocity: new THREE.Vector3(0,0,0),
+          oscillationSpeed: Math.random() * 0.5 + 0.5,
+          velocity: new THREE.Vector3(0, 0, 0),
           lifetime: 0,
-          maxLifetime: 12 + Math.random()*12
+          maxLifetime: 12 + Math.random() * 12
         };
         glyphs.push(sprite);
         scene.add(sprite);
       }
 
-      // Listeners
+      /* ===== Listeners ===== */
       window.addEventListener("resize", onWindowResize, false);
       document.addEventListener("mousemove", onDocumentMouseMove, false);
 
-      // Navigation buttons
+      // Navigation button toggles
       const navButtons = document.querySelectorAll("nav button");
-      const sections = ["inventory","map","email","codex","scanner"];
+      const sections = ["inventory", "map", "email", "codex", "scanner"];
       navButtons.forEach(btn => {
         btn.addEventListener("click", () => {
           const sectionId = btn.getAttribute("data-section");
@@ -241,29 +294,82 @@
       });
     }
 
-    /* Create a Plexus Plane (a subdivided plane with a wireframe material)
-       and store its original positions for wave animation. */
-    function createPlexusPlane(width, height, widthSegments, heightSegments, color) {
-      const geometry = new THREE.PlaneGeometry(width, height, widthSegments, heightSegments);
-      // Store a copy of the original vertex positions
-      const posAttr = geometry.attributes.position;
-      const origPos = new Float32Array(posAttr.array.length);
-      for (let i = 0; i < posAttr.array.length; i++) {
-        origPos[i] = posAttr.array[i];
+    /* Create a circuit texture for floor & ceiling */
+    function createCircuitTexture(size) {
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#0d1b2a";
+      ctx.fillRect(0, 0, size, size);
+
+      const lineCount = 25;
+      for (let i = 0; i < lineCount; i++) {
+        ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
+        ctx.lineWidth = Math.random() * 2 + 1;
+        ctx.beginPath();
+        let x1 = Math.random() * size;
+        let y1 = Math.random() * size;
+        let x2 = x1 + (Math.random() - 0.5) * 150;
+        let y2 = y1 + (Math.random() - 0.5) * 150;
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
       }
-      originalPositions.push(origPos);
-      // Use a MeshBasicMaterial with wireframe enabled (auto-updates)
-      const material = new THREE.MeshBasicMaterial({
-        color: color,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.8
-      });
-      const mesh = new THREE.Mesh(geometry, material);
-      return { mesh: mesh, geometry: geometry };
+      const arcCount = 15;
+      for (let i = 0; i < arcCount; i++) {
+        ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
+        ctx.lineWidth = Math.random() * 2 + 1;
+        ctx.beginPath();
+        let cx = Math.random() * size;
+        let cy = Math.random() * size;
+        let r = Math.random() * 40 + 10;
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      const textCount = 10;
+      ctx.fillStyle = "rgba(0, 204, 255, 0.25)";
+      ctx.font = "14px monospace";
+      for (let i = 0; i < textCount; i++) {
+        let tx = Math.random() * size;
+        let ty = Math.random() * size;
+        let hexString = Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase();
+        ctx.fillText(hexString, tx, ty);
+      }
+      return new THREE.CanvasTexture(canvas);
     }
 
-    /* Create a glyph sprite with the given archaic letter. */
+    /* Create a code texture for the walls (tightly packed) */
+    function createCodeTexture(size) {
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#0d1b2a";
+      ctx.fillRect(0, 0, size, size);
+
+      ctx.fillStyle = "rgba(0, 204, 255, 0.4)";
+      ctx.font = "10px monospace";
+      const columns = 40;
+      const rows = 50;
+      const colWidth = size / columns;
+      const rowHeight = size / rows;
+      const codeChars = [
+        "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
+        "𐎠","𐎣","𐎫","§","¤","※","✦"
+      ];
+      for (let c = 0; c < columns; c++) {
+        for (let r = 0; r < rows; r++) {
+          const char = codeChars[Math.floor(Math.random() * codeChars.length)];
+          let x = c * colWidth + colWidth * 0.1;
+          let y = r * rowHeight + rowHeight * 0.8;
+          ctx.fillText(char, x, y);
+        }
+      }
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    /* Create an interactive glyph sprite with the given letter */
     function createGlyphSprite(letter) {
       const canvas = document.createElement("canvas");
       canvas.width = 128;
@@ -275,12 +381,137 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(letter, 64, 64);
+
       const texture = new THREE.CanvasTexture(canvas);
-      const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const material = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        // alphaTest helps remove the "square" around the glyph
+        alphaTest: 0.1
+      });
+      // Optionally disable depthWrite if you always want glyphs behind/above
+      // material.depthWrite = false;
+
       material.sizeAttenuation = true;
       const sprite = new THREE.Sprite(material);
       sprite.scale.set(120, 120, 1);
       return sprite;
+    }
+
+    /* Spawn a glyph on one of the corridor walls */
+    function spawnGlyphOnWall(sprite) {
+      const wallType = Math.floor(Math.random() * 4); // 0:left, 1:right, 2:floor, 3:ceiling
+      const offset = 50; // small offset from the boundary
+      let x, y;
+      if (wallType === 0) { // left wall
+        x = -CORRIDOR_SIZE / 2 + offset;
+        y = (Math.random() - 0.5) * CORRIDOR_SIZE;
+      } else if (wallType === 1) { // right wall
+        x = CORRIDOR_SIZE / 2 - offset;
+        y = (Math.random() - 0.5) * CORRIDOR_SIZE;
+      } else if (wallType === 2) { // floor
+        y = -CORRIDOR_SIZE / 2 + offset;
+        x = (Math.random() - 0.5) * CORRIDOR_SIZE;
+      } else { // ceiling
+        y = CORRIDOR_SIZE / 2 - offset;
+        x = (Math.random() - 0.5) * CORRIDOR_SIZE;
+      }
+      const z = -Math.random() * CORRIDOR_SIZE;
+      sprite.position.set(x, y, z);
+    }
+
+    /* ========================
+       CREATE & SCROLL PLEXUS
+       ======================== */
+    function createScrollingPlexus() {
+      const group = new THREE.Group();
+
+      // Make the region bigger, so the camera is “inside” the plexus
+      // and we have more lines for a denser connection.
+      const nodeCount = 150;     // increased from 100
+      const threshold = 300;     // increased from 200 for more connections
+      const scrollSpeed = 1.0;
+
+      // Instead of placing them only near the floor, we allow them
+      // to span from y = -400 up to y = 0 (the camera is at y=0).
+      // This way, the user sees them around eye level to a bit below.
+      const regionMinX = -1100, regionMaxX = 1100;
+      const regionMinY = -400, regionMaxY = 0;
+      // Z range from far behind (z = -1250) to in front (z = 1800)
+      // so they scroll all the way through the camera’s position (z=1800).
+      const regionMinZ = -1250, regionMaxZ = 1800;
+
+      const regionWidth = regionMaxX - regionMinX;
+      const regionHeight = regionMaxY - regionMinY;
+      const regionDepth = regionMaxZ - regionMinZ;
+
+      // Create node positions
+      const nodes = [];
+      for (let i = 0; i < nodeCount; i++) {
+        const x = THREE.MathUtils.randFloat(regionMinX, regionMaxX);
+        const y = THREE.MathUtils.randFloat(regionMinY, regionMaxY);
+        const z = THREE.MathUtils.randFloat(regionMinZ, regionMaxZ);
+
+        const v = new THREE.Vector3(x, y, z);
+        v.userData = {
+          phase: Math.random() * Math.PI * 2,  // for sine wave
+          amplitude: 20 + Math.random() * 10,  // vertical oscillation
+          scrollSpeed: scrollSpeed
+        };
+        nodes.push(v);
+      }
+
+      // Build an empty BufferGeometry
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute([], 2));
+
+      // A simple fade-from-center shader
+      // (We’ll do a 2D fade based on x/z region, ignoring y for simplicity.)
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          lineColor: { value: new THREE.Color(0x00ccff) },
+          center: { value: new THREE.Vector2(0.5, 0.5) },
+          maxDist: { value: 1.0 }
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 lineColor;
+          uniform vec2 center;
+          uniform float maxDist;
+          varying vec2 vUv;
+          void main() {
+            float d = distance(vUv, center);
+            // fade out near edges
+            float alpha = 1.0 - smoothstep(0.0, maxDist, d);
+            gl_FragColor = vec4(lineColor, alpha);
+          }
+        `,
+        transparent: true,
+        depthTest: true,
+        depthWrite: false
+      });
+
+      const plexusLines = new THREE.LineSegments(geometry, material);
+      plexusLines.frustumCulled = false;
+
+      // Attach data so we can update in animate()
+      plexusLines.userData = {
+        nodes,
+        regionMinX, regionMaxX,
+        regionMinZ, regionMaxZ,
+        regionWidth, regionDepth,
+        threshold
+      };
+
+      group.add(plexusLines);
+      return group;
     }
 
     /* Window & Mouse Handlers */
@@ -289,10 +520,11 @@
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
+
     function onDocumentMouseMove(e) {
-      mouse.x = (e.clientX / window.innerWidth)*2 - 1;
-      mouse.y = -(e.clientY / window.innerHeight)*2 + 1;
-      const maxRotation = 0.06;
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      const maxRotation = 0.08;
       targetRotationY = mouse.x * maxRotation;
       targetRotationX = mouse.y * maxRotation;
     }
@@ -300,58 +532,115 @@
     /* Animation Loop */
     function animate() {
       requestAnimationFrame(animate);
-      const time = Date.now() * 0.001 * WAVE_SPEED;
+      const time = Date.now() * 0.001;
 
-      // Update each corridor plane's geometry with a wave distortion.
-      corridorPlanes.forEach((planeObj, index) => {
-        const posAttr = planeObj.geometry.attributes.position;
-        const orig = originalPositions[index];
-        for (let i = 0; i < posAttr.count; i++) {
-          const ox = orig[i*3 + 0];
-          const oy = orig[i*3 + 1];
-          // Calculate a wave offset based on original x and y plus time
-          const wave = Math.sin((ox + oy) * 0.05 + time) * WAVE_AMPLITUDE;
-          posAttr.setZ(i, wave);
+      // Smoothly rotate corridor
+      corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
+      corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
+
+      // Scroll textures
+      floorTexture.offset.y += SCROLL_SPEED_FLOOR;
+      ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR;
+      leftWallTexture.offset.y += SCROLL_SPEED_CODE;
+      rightWallTexture.offset.y += SCROLL_SPEED_CODE;
+
+      // Update the plexus lines (scrolling + building geometry)
+      if (plexusGroup && plexusGroup.children.length > 0) {
+        updateScrollingPlexus(plexusGroup.children[0], time);
+      }
+
+      // Update glyphs
+      updateGlyphs();
+
+      renderer.render(scene, camera);
+    }
+
+    /* Update the scrolling plexus each frame */
+    function updateScrollingPlexus(plexusLines, time) {
+      const geometry = plexusLines.geometry;
+      const {
+        nodes,
+        regionMinX, regionMaxX,
+        regionMinZ, regionMaxZ,
+        regionWidth, regionDepth,
+        threshold
+      } = plexusLines.userData;
+
+      const positions = [];
+      const uvs = [];
+
+      // Move each node forward (in +z) and do a sine wave in y
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
+        // vertical oscillation
+        n.y += Math.sin(time + n.userData.phase) * 0.2; 
+        // scroll forward
+        n.z += n.userData.scrollSpeed;
+        // if node goes beyond regionMaxZ, reset it behind regionMinZ
+        if (n.z > regionMaxZ) {
+          n.z = regionMinZ;
         }
-        posAttr.needsUpdate = true;
-      });
+      }
 
-      // Smoothly rotate the entire corridor group
-      // (Since the planes are children of the same group, rotate them together)
-      // For simplicity, we rotate each plane individually:
-      corridorPlanes.forEach(planeObj => {
-        planeObj.mesh.rotation.y += (targetRotationY - planeObj.mesh.rotation.y) * 0.05;
-        planeObj.mesh.rotation.x += (targetRotationX - planeObj.mesh.rotation.x) * 0.05;
-      });
+      // Connect nodes within threshold
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dist = nodes[i].distanceTo(nodes[j]);
+          if (dist < threshold) {
+            // push line
+            positions.push(nodes[i].x, nodes[i].y, nodes[i].z);
+            positions.push(nodes[j].x, nodes[j].y, nodes[j].z);
 
-      // Update glyphs: fade, oscillate, and push away from the cursor.
+            // compute UV for fade effect (based on x,z)
+            const u1 = (nodes[i].x - regionMinX) / regionWidth;
+            const v1 = (nodes[i].z - regionMinZ) / regionDepth;
+            const u2 = (nodes[j].x - regionMinX) / regionWidth;
+            const v2 = (nodes[j].z - regionMinZ) / regionDepth;
+
+            uvs.push(u1, v1);
+            uvs.push(u2, v2);
+          }
+        }
+      }
+
+      // Rebuild geometry
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+      geometry.attributes.position.needsUpdate = true;
+      geometry.attributes.uv.needsUpdate = true;
+      geometry.computeBoundingSphere();
+    }
+
+    /* Update glyphs each frame */
+    function updateGlyphs() {
       glyphs.forEach(sprite => {
         sprite.userData.lifetime += 0.016;
         const fade = 1 - (sprite.userData.lifetime / sprite.userData.maxLifetime);
         sprite.material.opacity = Math.max(fade, 0);
+
         if (fade <= 0.05) {
-          // Reset glyph position with a 50% chance to reposition near a wall.
           sprite.userData.lifetime = 0;
           sprite.userData.maxLifetime = 12 + Math.random() * 12;
+          // 50% chance to spawn on wall, otherwise in volume
           if (Math.random() < 0.5) {
-            // Spawn near one of the corridor walls
             spawnGlyphOnWall(sprite);
           } else {
             sprite.position.set(
-              (Math.random() - 0.5) * CORRIDOR_SIZE * 2,
-              (Math.random() - 0.5) * CORRIDOR_SIZE * 2,
-              -Math.random() * CORRIDOR_SIZE * 4
+              (Math.random() - 0.5) * CORRIDOR_SIZE,
+              (Math.random() - 0.5) * CORRIDOR_SIZE,
+              -Math.random() * CORRIDOR_SIZE
             );
           }
           sprite.userData.basePosition.copy(sprite.position);
           sprite.userData.velocity.set(0, 0, 0);
           sprite.material.opacity = 1.0;
         }
+
         const t = Date.now() * 0.001 * sprite.userData.oscillationSpeed;
         sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 15;
         sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 15;
 
-        // Calculate repulsion from the mouse (in screen space)
+        // Mouse-based repulsion
         const pos = sprite.position.clone();
         pos.project(camera);
         const glyphScreenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
@@ -368,43 +657,20 @@
           sprite.userData.velocity.x += pushX;
           sprite.userData.velocity.y += pushY;
         }
+
         sprite.userData.velocity.multiplyScalar(friction);
         sprite.position.x += sprite.userData.velocity.x;
         sprite.position.y += sprite.userData.velocity.y;
 
-        // Scale glyph based on distance to camera (bigger when closer)
+        // Scale based on distance
         const d = camera.position.distanceTo(sprite.position);
-        const minDist = 500, maxDist = 3000;
-        const scaleClose = 400, scaleFar = 150;
+        const minDist = 500, maxDist = 2000;
+        const scaleClose = 400, scaleFar = 200;
         const clampDist = THREE.MathUtils.clamp(d, minDist, maxDist);
         const alpha = (clampDist - minDist) / (maxDist - minDist);
         const finalScale = scaleClose * (1 - alpha) + scaleFar * alpha;
         sprite.scale.set(finalScale, finalScale, 1);
       });
-
-      renderer.render(scene, camera);
-    }
-
-    /* Spawn a glyph near one of the corridor walls */
-    function spawnGlyphOnWall(sprite) {
-      const wallType = Math.floor(Math.random() * 4);
-      const offset = 50;
-      let x, y;
-      if (wallType === 0) { // left wall
-        x = -CORRIDOR_SIZE/2 + offset;
-        y = (Math.random() - 0.5) * CORRIDOR_SIZE;
-      } else if (wallType === 1) { // right wall
-        x = CORRIDOR_SIZE/2 - offset;
-        y = (Math.random() - 0.5) * CORRIDOR_SIZE;
-      } else if (wallType === 2) { // floor
-        y = -CORRIDOR_SIZE/2 + offset;
-        x = (Math.random() - 0.5) * CORRIDOR_SIZE;
-      } else { // ceiling
-        y = CORRIDOR_SIZE/2 - offset;
-        x = (Math.random() - 0.5) * CORRIDOR_SIZE;
-      }
-      const z = -Math.random() * CORRIDOR_SIZE;
-      sprite.position.set(x, y, z);
     }
   </script>
 </body>
