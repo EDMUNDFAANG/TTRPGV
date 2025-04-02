@@ -91,8 +91,6 @@
       font-size: 1.1em;
       line-height: 1.6em;
     }
-    
-    /* (All panels are initially hidden except the Inventory panel) */
   </style>
 </head>
 <body>
@@ -194,7 +192,7 @@
       rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
       rightWallTexture.repeat.set(4, 5);
 
-      // Floor texture is generated but not added to the scene.
+      // Floor texture (unused) 
       floorTexture = createCodeTexture(512);
       floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
       floorTexture.repeat.set(4, 10);
@@ -260,6 +258,8 @@
       // ========== SCROLLING PLEXUS ==========
       plexusGroup = createScrollingPlexus();
       plexusGroup.rotation.x = -0.2;
+      // Ensure plexus renders above the walls
+      plexusGroup.renderOrder = 1;
       scene.add(plexusGroup);
 
       // ====== GLYPH SPRITES (30 total) ======
@@ -267,6 +267,7 @@
         "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
         "𐎠","𐎣","𐎫"
       ];
+      // Create glyphs with more spread and biased upward positions
       for (let i = 0; i < 30; i++) {
         const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
         const sprite = createGlyphSprite(letter);
@@ -275,7 +276,7 @@
         } else {
           sprite.position.set(
             (Math.random() - 0.5) * CORRIDOR_SIZE,
-            (Math.random() - 0.5) * CORRIDOR_SIZE,
+            Math.random() * 1950 - 700, // y between -700 and 1250
             -Math.random() * CORRIDOR_SIZE
           );
         }
@@ -299,10 +300,8 @@
       const sections = ["inventory", "map", "email", "codex", "scanner"];
       navButtons.forEach(btn => {
         btn.addEventListener("click", () => {
-          // Toggle active state on nav buttons
           navButtons.forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
-          // Toggle active state on content cards
           sections.forEach(s => {
             const el = document.getElementById(s);
             if (btn.getAttribute("data-section") === s) {
@@ -320,7 +319,7 @@
       const group = new THREE.Group();
 
       const nodeCount = 160;
-      const threshold = 435;
+      const threshold = 450;
       const scrollSpeed = 1.0;
 
       const regionMinX = -1100, regionMaxX = 1100;
@@ -378,6 +377,7 @@
 
       const plexusLines = new THREE.LineSegments(geometry, material);
       plexusLines.frustumCulled = false;
+      plexusLines.renderOrder = 1;
       plexusLines.userData = {
         nodes,
         regionMinX, regionMaxX,
@@ -401,14 +401,15 @@
 
       ctx.fillStyle = "rgba(0, 204, 255, 0.4)";
       ctx.font = "10px monospace";
+      // Use a more futuristic set of characters
+      const codeChars = [
+        "0", "1", "∑", "∆", "≈", "≠", "Ω", "π", "Σ", "Δ",
+        "¤", "¥", "µ", "∂", "ƒ", "Ξ", "Ψ", "Φ", "Λ", "Ω"
+      ];
       const columns = 40;
       const rows = 50;
       const colWidth = size / columns;
       const rowHeight = size / rows;
-      const codeChars = [
-        "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
-        "𐎠","𐎣","𐎫","§","¤","※","✦"
-      ];
       for (let c = 0; c < columns; c++) {
         for (let r = 0; r < rows; r++) {
           const char = codeChars[Math.floor(Math.random() * codeChars.length)];
@@ -566,7 +567,7 @@
           } else {
             sprite.position.set(
               (Math.random() - 0.5) * CORRIDOR_SIZE,
-              (Math.random() - 0.5) * CORRIDOR_SIZE,
+              Math.random() * 1950 - 700,
               -Math.random() * CORRIDOR_SIZE
             );
           }
@@ -611,19 +612,18 @@
 
     /* ============= SPAWN GLYPH ON WALL ============= */
     function spawnGlyphOnWall(sprite) {
-      const wallType = Math.floor(Math.random() * 4);
+      // Only choose left, right, or ceiling (avoid floor)
+      const wallTypes = [0, 1, 3];
+      const wallType = wallTypes[Math.floor(Math.random() * wallTypes.length)];
       const offset = 50;
       let x, y;
-      if (wallType === 0) {
+      if (wallType === 0) { // left wall
         x = -CORRIDOR_SIZE / 2 + offset;
-        y = (Math.random() - 0.5) * CORRIDOR_SIZE;
-      } else if (wallType === 1) {
+        y = Math.random() * 1950 - 700;
+      } else if (wallType === 1) { // right wall
         x = CORRIDOR_SIZE / 2 - offset;
-        y = (Math.random() - 0.5) * CORRIDOR_SIZE;
-      } else if (wallType === 2) {
-        y = -CORRIDOR_SIZE / 2 + offset;
-        x = (Math.random() - 0.5) * CORRIDOR_SIZE;
-      } else {
+        y = Math.random() * 1950 - 700;
+      } else { // ceiling
         y = CORRIDOR_SIZE / 2 - offset;
         x = (Math.random() - 0.5) * CORRIDOR_SIZE;
       }
@@ -653,6 +653,8 @@
       material.sizeAttenuation = true;
 
       const sprite = new THREE.Sprite(material);
+      // Ensure glyphs render above the plexus
+      sprite.renderOrder = 2;
       sprite.scale.set(120, 120, 1);
       return sprite;
     }
