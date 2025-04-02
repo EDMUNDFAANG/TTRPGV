@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Animus Corridor Simulation</title>
-  <!-- Load Orbitron font for a futuristic, robotic look -->
+  <!-- Load Orbitron font -->
   <link href="https://fonts.googleapis.com/css?family=Orbitron" rel="stylesheet">
   <!-- Three.js from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -12,7 +12,11 @@
     :root {
       --bg-color: #0d1b2a;
       --accent-color: #00ccff;
-      --panel-bg: rgba(0, 0, 0, 0.3);
+      --panel-bg: rgba(0, 0, 0, 0.4); /* Slightly less transparent */
+      --text-color: rgba(0, 204, 255, 0.9);
+      --border-color: rgba(0,204,255,0.3);
+      --hover-border-color: rgba(0,204,255,0.6);
+      --active-bg: rgba(0,204,255,0.2);
     }
     /* ===== Reset & Base Styles ===== */
     html, body {
@@ -21,41 +25,49 @@
       overflow: hidden;
       background: var(--bg-color);
       font-family: 'Orbitron', sans-serif;
+      color: var(--text-color); /* Default text color */
     }
     canvas {
       display: block;
     }
 
-    /* ===== Holographic Text Style (Refined for crispness) ===== */
+    /* ===== Holographic Text Style ===== */
     .holo-text {
       font-family: 'Orbitron', sans-serif;
       font-weight: bold;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      text-shadow: 0 0 2px rgba(0,204,255,0.8), 0 0 5px rgba(0,204,255,0.5);
-      /* Use a repeating SVG pattern for subtle detail */
-      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cdefs%3E%3Cpattern id='p' patternUnits='userSpaceOnUse' width='200' height='200'%3E%3Ccircle cx='100' cy='100' r='50' stroke='rgba(0,204,255,0.3)' stroke-width='2' fill='none' /%3E%3Cline x1='0' y1='0' x2='200' y2='200' stroke='rgba(0,204,255,0.3)' stroke-width='2' /%3E%3C/pattern%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23p)' /%3E%3C/svg%3E") repeat;
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 3px rgba(0,204,255,0.8), 0 0 6px rgba(0,204,255,0.5);
+      color: var(--text-color); /* Ensure holo-text uses the base text color */
+       /* Removed background clip for broader compatibility and less complexity */
+       /* Consider adding back if the effect is strongly desired */
       opacity: 0.95;
     }
-    
-    /* ===== Login Panel (covers the screen initially) ===== */
+
+    /* ===== Login Panel Styling & Transition ===== */
     #loginPanel {
       position: fixed;
       top: 50%;
       left: 50%;
-      transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%) scale(1); /* Start at full scale */
       width: 300px;
       padding: 30px;
-      border: 2px solid rgba(0,204,255,0.3);
+      border: 2px solid var(--border-color);
       border-radius: 20px;
       background: var(--panel-bg);
       backdrop-filter: blur(8px);
       text-align: center;
       z-index: 400;
+      opacity: 1;
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out; /* Transition opacity and transform */
+      pointer-events: auto; /* Initially interactive */
     }
+    #loginPanel.hidden {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8); /* Scale down on hide */
+        pointer-events: none; /* Not interactive when hidden */
+    }
+
     #loginPanel input {
       width: 90%;
       margin: 10px 0;
@@ -79,14 +91,22 @@
       font-family: 'Orbitron', sans-serif;
     }
     #loginPanel button:hover {
-      background: rgba(0,204,255,0.3);
+      background: var(--active-bg);
     }
 
     /* ===== Main Content (hidden until login) ===== */
     #mainContent {
-      display: none;
+      display: block; /* Keep as block, control visibility with opacity */
+      opacity: 0; /* Start hidden */
+      transition: opacity 1.5s ease-in; /* Fade in */
+      transition-delay: 0.5s; /* Delay fade-in until login panel fades out */
+      pointer-events: none; /* Not interactive until faded in */
     }
-    
+    #mainContent.visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
     /* ===== Intro Message Overlay ===== */
     #introMessage {
       position: fixed;
@@ -97,6 +117,7 @@
       z-index: 300;
       opacity: 0;
       animation: introAnim 3s forwards;
+      animation-delay: 0.8s; /* Delay slightly more to follow login fade */
     }
     @keyframes introAnim {
       0% {
@@ -105,7 +126,7 @@
       }
       40% {
         opacity: 1;
-        transform: translate(-50%, -50%) scale(1.2);
+        transform: translate(-50%, -50%) scale(1.1); /* Slightly less jump */
       }
       100% {
         opacity: 0;
@@ -126,15 +147,14 @@
       padding: 10px;
       box-shadow: 0 0 10px rgba(0,204,255,0.5);
       backdrop-filter: blur(5px);
-      opacity: 0;
+      opacity: 0; /* Start hidden */
       animation: navFadeIn 1s forwards;
-      animation-delay: 3s;
+      animation-delay: 2.5s; /* Delay more to sync with mainContent fade */
     }
     @keyframes navFadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
     }
-    /* Initially hide buttons with a slight upward offset */
     nav button {
       background: transparent;
       border: 2px solid var(--accent-color);
@@ -144,189 +164,372 @@
       text-transform: uppercase;
       transition: background 0.3s, color 0.3s, transform 0.3s;
       outline: none;
-      opacity: 0;
+      opacity: 0; /* Start hidden */
       transform: translateY(-20px);
       animation: buttonFadeIn 0.8s forwards;
+      color: var(--text-color); /* Inherit text color */
     }
-    /* Removed 'active' from Inventory; no button is preselected */
-    nav button[data-section="email"] { animation-delay: 3.2s; }
-    nav button[data-section="inventory"] { animation-delay: 3.4s; }
-    nav button[data-section="map"] { animation-delay: 3.6s; }
-    nav button[data-section="codex"] { animation-delay: 3.8s; }
-    nav button[data-section="scanner"] { animation-delay: 4.0s; }
+    /* Adjust delays to follow nav fade-in */
+    nav button[data-section="inventory"] { animation-delay: 2.7s; }
+    nav button[data-section="map"] { animation-delay: 2.9s; }
+    nav button[data-section="email"] { animation-delay: 3.1s; }
+    nav button[data-section="codex"] { animation-delay: 3.3s; }
+    nav button[data-section="scanner"] { animation-delay: 3.5s; }
+    nav button[data-section="vitals"] { animation-delay: 3.7s; }
+
     @keyframes buttonFadeIn {
       from { opacity: 0; transform: translateY(-20px); }
       to { opacity: 1; transform: translateY(0); }
     }
     nav button:hover,
     nav button.active {
-      background: rgba(0,204,255,0.4);
-      color: #000;
-      transform: scale(1.05);
+      background: var(--active-bg);
+      color: #FFF; /* Brighter text on active/hover */
+      transform: scale(1.05) translateY(0); /* Ensure translateY is reset */
     }
-    
+
     /* ===== Content Panels Wrapper ===== */
     #contentWrapper {
-      opacity: 0;
-      animation: contentFadeIn 1s forwards;
-      animation-delay: 3.2s;
+      /* This wrapper might not be strictly needed if panels fade individually */
+      /* Kept for structure, but animations now on .content-card */
     }
-    @keyframes contentFadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
+
     /* ===== Floating UI Panels ===== */
     .content-card {
       position: fixed;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%) scale(0.95);
-      width: 60%;
-      max-width: 800px;
-      padding: 30px;
-      border: 2px solid rgba(0,204,255,0.3);
-      border-radius: 20px;
+      width: 70%; /* Slightly wider */
+      max-width: 900px; /* Max width */
+      height: 60vh; /* Set a height */
+      max-height: 600px; /* Max height */
+      padding: 25px;
+      border: 2px solid var(--border-color);
+      border-radius: 15px; /* Slightly less rounded */
       box-shadow: 0 0 20px rgba(0,204,255,0.2);
       background: var(--panel-bg);
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px); /* Increase blur */
       z-index: 100;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.5s ease, transform 0.5s ease;
+      display: flex; /* Use flexbox for internal layout */
+      flex-direction: column; /* Stack elements vertically */
+      overflow: hidden; /* Prevent content spill */
     }
     .content-card.active {
       opacity: 1;
       pointer-events: auto;
       transform: translate(-50%, -50%) scale(1);
+      /* Add subtle animation on activation */
+      animation: panelActivate 0.5s ease-out forwards;
     }
-    .content-card h1, .content-card p {
-      margin: 0;
+    @keyframes panelActivate {
+        from { transform: translate(-50%, -50%) scale(0.98); }
+        to { transform: translate(-50%, -50%) scale(1); }
     }
-    
-    /* ===== New Inventory Container ===== */
+    .content-card h1 {
+      margin: 0 0 15px 0; /* Add bottom margin to title */
+      padding-bottom: 10px; /* Space below title */
+      border-bottom: 1px solid var(--border-color); /* Separator line */
+      text-align: center;
+      flex-shrink: 0; /* Prevent title from shrinking */
+    }
+    .content-card .panel-content {
+       flex-grow: 1; /* Allow content area to fill space */
+       overflow-y: auto; /* Add scroll if content overflows */
+       padding-right: 10px; /* Space for scrollbar */
+    }
+     /* Custom Scrollbar */
+    .panel-content::-webkit-scrollbar {
+      width: 8px;
+    }
+    .panel-content::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.2);
+      border-radius: 4px;
+    }
+    .panel-content::-webkit-scrollbar-thumb {
+      background-color: var(--accent-color);
+      border-radius: 4px;
+      border: 2px solid var(--panel-bg);
+    }
+
+    /* ===== Inventory Container Styling ===== */
    #inventoryContainer {
-  display: none; /* Hidden by default */
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 300;
-  width: 900px;
-  padding: 20px;
-  background: var(--panel-bg);
-  backdrop-filter: blur(8px);
-  border: 2px solid rgba(0,204,255,0.3);
-  border-radius: 20px;
-  box-shadow: 0 0 20px rgba(0,204,255,0.2);
-  gap: 20px;
-}
+      display: none; /* Hidden by default */
+      position: fixed; /* Use fixed like other panels */
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      z-index: 150; /* Slightly above other cards if needed */
+      width: 800px; /* Adjusted width */
+      height: 550px; /* Fixed height */
+      padding: 20px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px);
+      border: 2px solid var(--border-color);
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,204,255,0.2);
+      flex-direction: row; /* Side-by-side layout */
+      gap: 20px;
+      opacity: 0; /* For transition */
+      pointer-events: none;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+   }
+   #inventoryContainer.active {
+      display: flex; /* Show using flex */
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+      animation: panelActivate 0.5s ease-out forwards;
+    }
 
     .inventory-grid {
       flex: 2;
       display: grid;
-      grid-template-columns: repeat(4, 100px);
-      grid-template-rows: repeat(4, 100px);
-      gap: 15px;
-      justify-content: center;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); /* Responsive columns */
+      grid-auto-rows: 90px; /* Fixed row height */
+      gap: 10px; /* Reduced gap */
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow-y: auto; /* Scroll if grid overflows */
       align-content: start;
     }
+     /* Custom Scrollbar for Inventory Grid */
+    .inventory-grid::-webkit-scrollbar { width: 6px; }
+    .inventory-grid::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    .inventory-grid::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
+
     .inventory-slot {
-      width: 100px;
-      height: 100px;
-      border: 2px solid rgba(0,204,255,0.3);
+      width: 100%; /* Fill grid cell */
+      height: 100%; /* Fill grid cell */
+      border: 2px solid var(--border-color);
       border-radius: 8px;
-      background: rgba(0,0,0,0.2);
+      background: rgba(0,0,0,0.3); /* Darker slot background */
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: border 0.3s;
+      transition: border-color 0.3s, background-color 0.3s;
       cursor: pointer;
+      position: relative; /* For potential item count overlay */
     }
     .inventory-slot:hover {
-      border-color: rgba(0,204,255,0.6);
+      border-color: var(--hover-border-color);
+      background-color: rgba(0, 204, 255, 0.1);
+    }
+     .inventory-slot.selected { /* Style for selected slot */
+        border-color: var(--accent-color);
+        background-color: rgba(0, 204, 255, 0.15);
+        box-shadow: 0 0 8px var(--accent-color);
     }
     .inventory-slot img {
-      max-width: 90%;
-      max-height: 90%;
+      max-width: 85%; /* Slightly smaller image */
+      max-height: 85%;
+      object-fit: contain; /* Ensure aspect ratio is maintained */
     }
+
+    /* Item Info Panel Styling */
     .item-info {
       flex: 1;
-      border: 2px solid rgba(0,204,255,0.3);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
-      background: rgba(0,0,0,0.2);
-      padding: 20px;
+      background: rgba(0,0,0,0.1); /* Lighter background for contrast */
+      padding: 15px;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: space-between; /* Push actions to bottom */
     }
+    .item-details {
+        flex-grow: 1; /* Allow details to take available space */
+        overflow-y: auto; /* Scroll long descriptions */
+        margin-bottom: 15px; /* Space before actions */
+    }
+    /* Custom Scrollbar for Item Details */
+    .item-details::-webkit-scrollbar { width: 6px; }
+    .item-details::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    .item-details::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
+
     .item-info h2 {
       margin: 0 0 10px 0;
-      font-size: 1.2em;
+      font-size: 1.3em;
+      color: var(--accent-color); /* Highlight title */
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 5px;
     }
     .item-info p {
-      font-size: 0.9em;
+      font-size: 0.95em; /* Slightly larger text */
+      line-height: 1.5; /* Better readability */
+      color: var(--text-color);
+    }
+    .item-actions {
+        flex-shrink: 0; /* Prevent actions area from shrinking */
+        text-align: right; /* Align buttons to the right */
     }
     .item-actions button {
       background: transparent;
       border: 2px solid var(--accent-color);
       color: var(--accent-color);
-      margin-right: 10px;
+      margin-left: 10px; /* Use margin-left for right alignment */
       padding: 8px 16px;
       cursor: pointer;
       text-transform: uppercase;
-      transition: background 0.3s;
+      transition: background 0.3s, color 0.3s;
       font-family: 'Orbitron', sans-serif;
     }
     .item-actions button:hover {
-      background: rgba(0,204,255,0.2);
+      background: var(--active-bg);
+      color: #FFF;
     }
-    
+     .item-actions button:disabled { /* Style for disabled buttons */
+        border-color: rgba(0, 204, 255, 0.2);
+        color: rgba(0, 204, 255, 0.3);
+        cursor: not-allowed;
+        background: transparent;
+    }
+
+    /* ===== Email Section Styling ===== */
+    #email .panel-content {
+        display: flex;
+        gap: 15px; /* Space between list and content */
+        padding: 15px 0 0 0; /* Adjust padding */
+    }
+    #emailList {
+        flex: 1; /* Takes up 1 part of the space */
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        border-right: 1px solid var(--border-color); /* Separator */
+        overflow-y: auto; /* Scroll for email list */
+        padding-right: 15px; /* Space before separator */
+        max-height: calc(60vh - 100px); /* Example height limit */
+    }
+     /* Custom Scrollbar for Email List */
+    #emailList::-webkit-scrollbar { width: 6px; }
+    #emailList::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    #emailList::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
+
+    #emailList li {
+        padding: 10px 12px;
+        border: 1px solid transparent; /* Placeholder for border transition */
+        border-bottom: 1px solid rgba(0, 204, 255, 0.15);
+        margin-bottom: 5px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s, border-color 0.3s;
+    }
+    #emailList li:hover {
+        background-color: rgba(0, 204, 255, 0.08);
+        border-color: rgba(0, 204, 255, 0.2);
+    }
+    #emailList li.active {
+        background-color: var(--active-bg);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 5px rgba(0, 204, 255, 0.3);
+    }
+    #emailList li .sender {
+        font-weight: bold;
+        display: block; /* Put sender on its own line */
+        margin-bottom: 3px;
+        color: var(--accent-color);
+    }
+    #emailList li .subject {
+        font-size: 0.9em;
+        color: var(--text-color);
+    }
+    #emailList li.read .subject { /* Style for read emails */
+        opacity: 0.7;
+    }
+     #emailList li.unread::before { /* Unread indicator */
+        content: '●';
+        color: var(--accent-color);
+        font-size: 0.8em;
+        margin-right: 8px;
+        display: inline-block;
+    }
+
+    #emailContent {
+        flex: 2; /* Takes up 2 parts of the space */
+        padding: 0 10px; /* Padding inside content area */
+        overflow-y: auto; /* Scroll for long emails */
+        max-height: calc(60vh - 100px); /* Match list height limit */
+    }
+     /* Custom Scrollbar for Email Content */
+    #emailContent::-webkit-scrollbar { width: 6px; }
+    #emailContent::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    #emailContent::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
+
+    #emailContent h2 { /* Subject in content view */
+        font-size: 1.4em;
+        color: var(--accent-color);
+        margin: 0 0 15px 0;
+        padding-bottom: 5px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    #emailContent .email-meta {
+        font-size: 0.85em;
+        color: rgba(0, 204, 255, 0.7);
+        margin-bottom: 20px;
+    }
+     #emailContent .email-meta span { display: block; } /* Meta info on separate lines */
+    #emailContent .email-body {
+        font-size: 0.95em;
+        line-height: 1.6;
+        white-space: pre-wrap; /* Preserve line breaks from data */
+    }
+    #emailPlaceholder { /* Message when no email is selected */
+      text-align: center;
+      margin-top: 50px;
+      font-size: 1.1em;
+      color: rgba(0, 204, 255, 0.6);
+    }
+
     /* ===== Refined Ripple Effect ===== */
     .ripple {
       position: absolute;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(0,204,255,0.45) 15%, rgba(0,204,255,0.2) 50%, rgba(0,204,255,0) 70%);
+      /* Softer gradient, fades faster */
+      background: radial-gradient(circle, rgba(0,204,255,0.15) 5%, rgba(0,204,255,0.08) 25%, rgba(0,204,255,0) 55%);
       transform: scale(0);
       pointer-events: none;
-      animation: ripple-effect 1.2s ease-out;
+      /* Shorter animation duration, smaller final scale */
+      animation: ripple-effect 0.7s ease-out;
       z-index: 50;
-    }
-    .ripple::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      border: 1px dashed rgba(0,204,255,0.35);
-      border-radius: 50%;
-      animation: ripple-lines 1.2s ease-out;
+      /* Removed ::after dashed lines */
     }
     @keyframes ripple-effect {
-      0% { transform: scale(0); opacity: 0.95; }
-      50% { transform: scale(1.8); opacity: 0.7; }
-      100% { transform: scale(3.5); opacity: 0; }
+      0% { transform: scale(0); opacity: 0.6; } /* Start smaller, slightly less opaque */
+      70% { transform: scale(1.5); opacity: 0.3; } /* Expand less */
+      100% { transform: scale(2.0); opacity: 0; }
     }
-    @keyframes ripple-lines {
-      0% { transform: scale(1); opacity: 1; }
-      100% { transform: scale(3.5); opacity: 0; }
+
+    /* ===== Other Section Placeholders ===== */
+    #map .panel-content p,
+    #codex .panel-content p,
+    #scanner .panel-content p,
+    #vitals .panel-content p {
+        padding-top: 20px;
+        font-size: 1.1em;
+        text-align: center;
     }
+
   </style>
 </head>
 <body>
   <!-- ===== Login Panel ===== -->
-  <div id="loginPanel" class="content-card active">
+  <div id="loginPanel"> <!-- Removed active class, handled by JS -->
     <h1 class="holo-text">Access Required</h1>
-    <input type="text" id="username" placeholder="Username" />
-    <input type="password" id="passcode" placeholder="Passcode" />
-    <button id="loginButton">Enter</button>
+    <input type="text" id="username" placeholder="Username" value="Vesta"/> <!-- Pre-filled for demo -->
+    <input type="password" id="passcode" placeholder="Passcode" value="password" /> <!-- Pre-filled for demo -->
+    <button id="loginButton" class="holo-text">Initiate Link</button>
   </div>
 
   <!-- ===== Main Content (hidden until login) ===== -->
   <div id="mainContent">
     <!-- ===== Intro Message ===== -->
     <div id="introMessage" class="holo-text">Welcome, Vesta Vyntarion.</div>
-    
+
     <!-- ===== Navigation ===== -->
     <nav>
       <button data-section="inventory" class="holo-text">Inventory</button>
@@ -334,138 +537,377 @@
       <button data-section="email" class="holo-text">Email</button>
       <button data-section="codex" class="holo-text">Codex</button>
       <button data-section="scanner" class="holo-text">Scanner</button>
+      <button data-section="vitals" class="holo-text">Vitals</button>
     </nav>
-    
+
     <!-- ===== Content Panels Wrapper ===== -->
     <div id="contentWrapper">
-      <div id="inventory" class="content-card">
-        <!-- Note: old inventory panel removed -->
-      </div>
+      <!-- Note: Old inventory panel removed. New one is outside this wrapper -->
       <div id="map" class="content-card">
-        <h1 class="holo-text">Map</h1>
-        <p class="holo-text">Map details go here.</p>
+        <h1 class="holo-text">Navigation Grid</h1>
+        <div class="panel-content">
+           <p class="holo-text">Stellar Cartography Data Unavailable.</p>
+           <!-- Map content will go here -->
+        </div>
       </div>
       <div id="email" class="content-card">
-        <h1 class="holo-text">Email</h1>
-        <p class="holo-text">Email details go here.</p>
+        <h1 class="holo-text">Comms Terminal</h1>
+         <div class="panel-content">
+            <ul id="emailList">
+                <!-- Email list items will be populated here by JS -->
+            </ul>
+            <div id="emailContent">
+                <!-- Selected email content will be shown here -->
+                 <div id="emailPlaceholder" class="holo-text">Select a message from the terminal list.</div>
+                 <h2 id="emailSubject" style="display: none;"></h2>
+                 <div id="emailMeta" style="display: none;">
+                     <span id="emailSender"></span>
+                     <span id="emailDate"></span>
+                 </div>
+                 <div id="emailBody" style="display: none;"></div>
+            </div>
+         </div>
       </div>
       <div id="codex" class="content-card">
-        <h1 class="holo-text">Codex</h1>
-        <p class="holo-text">Codex details go here.</p>
+        <h1 class="holo-text">Data Codex</h1>
+        <div class="panel-content">
+           <p class="holo-text">No entries found. Connect to Archive Node.</p>
+           <!-- Codex content will go here -->
+        </div>
       </div>
       <div id="scanner" class="content-card">
-        <h1 class="holo-text">Scanner</h1>
-        <p class="holo-text">Scanner details go here.</p>
+        <h1 class="holo-text">Environmental Scanner</h1>
+         <div class="panel-content">
+            <p class="holo-text">Scanner inactive. Awaiting target lock.</p>
+            <!-- Scanner content will go here -->
+        </div>
       </div>
-      <div id="scanner" class="content-card">
-        <h1 class="holo-text">Vitals</h1>
-        <p class="holo-text">Vitals details go here.</p>
+      <div id="vitals" class="content-card">
+        <h1 class="holo-text">Biometrics</h1>
+         <div class="panel-content">
+            <p class="holo-text">Telemetry offline. Check neural link.</p>
+            <!-- Vitals content will go here -->
+        </div>
+      </div>
     </div>
-  </div>
 
   <!-- ===== New Inventory Container (initially hidden) ===== -->
   <div id="inventoryContainer">
     <!-- Left side: inventory slots -->
     <div class="inventory-grid">
-      <!-- 16 slots (4×4) as an example -->
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 1" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 2" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 3" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 4" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 5" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 6" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 7" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 8" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 9" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 10" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 11" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 12" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 13" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 14" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 15" /></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 16" /></div>
+      <!-- Dynamic slots example (can be populated by JS later) -->
+      <div class="inventory-slot" data-itemid="health_potion_1"><img src="placeholder.png" alt="Item"></div>
+      <div class="inventory-slot" data-itemid="keycard_alpha"><img src="placeholder.png" alt="Item"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <!-- Add more slots as needed -->
     </div>
-    
+
     <!-- Right side: item info panel -->
     <div class="item-info">
       <div class="item-details">
-        <h2 class="holo-text">Item Information</h2>
-        <p class="holo-text">Select an item to see details here.</p>
+        <h2 class="holo-text" id="itemInfoTitle">Item Information</h2>
+        <p class="holo-text" id="itemInfoDesc">Select an item from the grid.</p>
       </div>
       <div class="item-actions">
-        <button class="holo-text">Use</button>
+        <button id="itemUseButton" class="holo-text" disabled>Use</button>
+        <button id="itemDropButton" class="holo-text" disabled>Drop</button>
       </div>
     </div>
   </div>
 
   <script>
+    // ----- Global DOM Elements -----
+    const loginPanel = document.getElementById("loginPanel");
+    const loginButton = document.getElementById("loginButton");
+    const mainContent = document.getElementById("mainContent");
+    const navButtons = document.querySelectorAll("nav button[data-section]");
+    const contentCards = document.querySelectorAll("#contentWrapper .content-card");
+    const inventoryContainer = document.getElementById("inventoryContainer");
+    const inventorySlots = document.querySelectorAll(".inventory-slot");
+    const itemInfoTitle = document.getElementById("itemInfoTitle");
+    const itemInfoDesc = document.getElementById("itemInfoDesc");
+    const itemUseButton = document.getElementById("itemUseButton");
+    const itemDropButton = document.getElementById("itemDropButton");
+    const emailList = document.getElementById("emailList");
+    const emailContent = document.getElementById("emailContent");
+    const emailPlaceholder = document.getElementById("emailPlaceholder");
+    const emailSubjectEl = document.getElementById("emailSubject");
+    const emailMetaEl = document.getElementById("emailMeta");
+    const emailSenderEl = document.getElementById("emailSender");
+    const emailDateEl = document.getElementById("emailDate");
+    const emailBodyEl = document.getElementById("emailBody");
+
+    let loadingStartTime; // For Three.js timing
+
+    // ----- Dummy Data -----
+    const inventoryItems = { // Simple item data store
+        "health_potion_1": { name: "Medi-Gel (Basic)", description: "Standard issue regenerative gel. Seals minor wounds and provides temporary pain relief. Single use.", usable: true },
+        "keycard_alpha": { name: "Access Key: Sector Alpha", description: "Standard personnel keycard. Grants access to Alpha Sector maintenance hatches and common areas.", usable: false },
+        // Add more items here referenced by data-itemid in HTML
+    };
+
+    const emails = [
+        { id: 1, sender: "System Operations", subject: "Welcome to the Animus Corridor", date: "Cycle 34.1", body: "Unit VST-VYN,\n\nYour connection to the Animus Corridor Simulation is confirmed. All core systems nominal.\n\nRemember to consult the Data Codex for operational procedures and review safety protocols.\n\nReport any anomalies immediately via the designated channel.\n\n- SysOps Command", read: false },
+        { id: 2, sender: "Quartermaster Unit 7", subject: "Inventory Manifest Update", date: "Cycle 34.0", body: "Attn: V. Vyntarion,\n\nYour starting equipment has been dispatched:\n- Standard Issue Sidearm (Check Scanner Slot)\n- Medi-Gel (Basic) x2\n- Access Key: Sector Alpha\n\nConfirm receipt.\n\n- QM-7", read: false },
+        { id: 3, sender: "WARNING - Automated Alert", subject: "Energy Fluctuation Detected - Sector Gamma", date: "Cycle 33.9", body: "ALERT: Unidentified energy signature detected originating from Sector Gamma, Grid 7G-Delta.\n\nMagnitude exceeds standard operational parameters.\n\nProceed with caution. Avoid area until cleared by Hazard Containment.\n\nRECORD ID: AE-8873-G", read: true },
+         { id: 4, sender: "Dr. Aris Thorne", subject: "Re: Research Query", date: "Cycle 33.8", body: "Vesta,\n\nRegarding your query on the chroniton field distortions - the patterns are inconsistent with known phenomena. My simulations suggest an external influence, but I lack sufficient data.\n\nKeep your scanner active. Any unusual energy readings, especially temporal signatures, forward them to me directly. This is priority Alpha.\n\nStay safe,\nAris", read: false },
+    ];
+
     // ----- Login Handling -----
-    document.getElementById("loginButton").addEventListener("click", function() {
+    loginButton.addEventListener("click", function() {
       const username = document.getElementById("username").value.trim();
       const passcode = document.getElementById("passcode").value.trim();
       if (username && passcode) {
-        // Hide login panel and show main content
-        document.getElementById("loginPanel").style.display = "none";
-        document.getElementById("mainContent").style.display = "block";
-        // Start the animation sequence
-        loadingStartTime = Date.now() * 0.001;
-        init();
-        animate();
+        // 1. Start hiding login panel
+        loginPanel.classList.add("hidden");
+
+        // 2. After login panel fades out, remove it and show main content
+        loginPanel.addEventListener('transitionend', () => {
+            loginPanel.style.display = "none"; // Fully remove after fade
+            // Show main content container (triggers its fade-in via CSS)
+            mainContent.classList.add("visible");
+             // Start the Three.js background only AFTER the UI is ready
+            loadingStartTime = Date.now() * 0.001;
+            initThreeJS(); // Renamed init to initThreeJS
+            animateThreeJS(); // Renamed animate to animateThreeJS
+
+        }, { once: true }); // Ensure this listener runs only once
+
       } else {
-        alert("Please enter both username and passcode.");
+        alert("Access denied. Credentials required.");
       }
     });
 
-    // ----- Navigation & Inventory Show/Hide Logic -----
-    const navButtons = document.querySelectorAll("nav button[data-section]");
-const inventoryContainer = document.getElementById("inventoryContainer");
+    // ----- Navigation & Panel Switching Logic -----
+    navButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const section = btn.getAttribute("data-section");
 
-navButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    // Remove 'active' class from all nav buttons.
-    navButtons.forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
+        // Deactivate all buttons and panels first
+        navButtons.forEach(b => b.classList.remove("active"));
+        contentCards.forEach(card => card.classList.remove("active"));
+        inventoryContainer.classList.remove("active"); // Hide inventory too
 
-    // Hide all content panels (the old ones)
-    const contentCards = document.querySelectorAll(".content-card");
-    contentCards.forEach(card => card.classList.remove("active"));
+        // Activate the clicked button
+        btn.classList.add("active");
 
-    // Determine which section to display.
-    const section = btn.getAttribute("data-section");
-
-    if (section === "inventory") {
-      // Show the new inventory container if "Inventory" is selected.
-      inventoryContainer.style.display = "flex";
-    } else {
-      // Otherwise, hide the inventory container.
-      inventoryContainer.style.display = "none";
-      // And display the corresponding content-card.
-      const targetCard = document.getElementById(section);
-      if (targetCard) {
-        targetCard.classList.add("active");
-      }
-    }
-  });
-});
-
-    // ----- Inventory Slot Clicks -----
-    const slots = document.querySelectorAll(".inventory-slot");
-    const itemTitle = document.querySelector(".item-details h2");
-    const itemDesc = document.querySelector(".item-details p");
-    slots.forEach((slot, index) => {
-      slot.addEventListener("click", () => {
-        itemTitle.textContent = "Item Slot " + (index + 1);
-        itemDesc.textContent = "Details for the item in slot " + (index + 1) + ".";
+        // Show the correct panel
+        if (section === "inventory") {
+          inventoryContainer.classList.add("active");
+        } else {
+          const targetCard = document.getElementById(section);
+          if (targetCard) {
+            targetCard.classList.add("active");
+            // If email section, populate the list
+            if (section === "email") {
+                populateEmailList();
+                resetEmailContent(); // Show placeholder initially
+            }
+          }
+        }
       });
     });
 
-    // ----- Three.js Scene & Animation Code -----
+    // ----- Inventory Interaction Logic -----
+    let selectedSlot = null; // Track the currently selected inventory slot
+
+    inventorySlots.forEach(slot => {
+        slot.addEventListener("click", () => {
+            const itemId = slot.getAttribute("data-itemid");
+
+            // Deselect previous slot
+            if (selectedSlot) {
+                selectedSlot.classList.remove("selected");
+            }
+
+            if (itemId && inventoryItems[itemId]) {
+                const item = inventoryItems[itemId];
+                itemInfoTitle.textContent = item.name;
+                itemInfoDesc.textContent = item.description;
+                itemUseButton.disabled = !item.usable; // Enable 'Use' if usable
+                itemDropButton.disabled = false; // Enable 'Drop'
+                slot.classList.add("selected"); // Highlight selected slot
+                selectedSlot = slot; // Update selected slot tracker
+            } else {
+                // Empty slot selected
+                itemInfoTitle.textContent = "Empty Slot";
+                itemInfoDesc.textContent = "This inventory slot is empty.";
+                itemUseButton.disabled = true;
+                itemDropButton.disabled = true;
+                slot.classList.add("selected"); // Still visually select the empty slot
+                selectedSlot = slot;
+            }
+        });
+
+        // Add placeholder images if src is "placeholder.png"
+        const img = slot.querySelector('img');
+        if (img && img.src.includes('placeholder.png')) {
+            // Generate a simple SVG placeholder
+            const placeholderSvg = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100">
+                    <rect width="100" height="100" fill="rgba(0,204,255,0.05)"/>
+                    <line x1="20" y1="20" x2="80" y2="80" stroke="rgba(0,204,255,0.2)" stroke-width="5"/>
+                    <line x1="80" y1="20" x2="20" y2="80" stroke="rgba(0,204,255,0.2)" stroke-width="5"/>
+                     <circle cx="50" cy="50" r="30" fill="none" stroke="rgba(0,204,255,0.3)" stroke-width="5"/>
+                </svg>`;
+            img.src = `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
+            img.style.opacity = "0.5"; // Make placeholder less prominent
+        }
+    });
+
+    // Add basic functionality to inventory buttons (can be expanded)
+    itemUseButton.addEventListener("click", () => {
+        if (selectedSlot && !itemUseButton.disabled) {
+            const itemId = selectedSlot.getAttribute("data-itemid");
+            alert(`Used ${inventoryItems[itemId].name}!`);
+            // Add actual use logic here (e.g., remove item, apply effect)
+        }
+    });
+
+     itemDropButton.addEventListener("click", () => {
+        if (selectedSlot && !itemDropButton.disabled) {
+            const itemId = selectedSlot.getAttribute("data-itemid");
+            const itemName = itemId ? inventoryItems[itemId].name : "Empty Slot";
+             if (confirm(`Are you sure you want to drop ${itemName}?`)) {
+                alert(`Dropped ${itemName}.`);
+                 // Add actual drop logic here (e.g., remove item from slot)
+                 if (itemId) {
+                     selectedSlot.removeAttribute("data-itemid");
+                      const img = selectedSlot.querySelector('img');
+                      if(img) { // Replace image with placeholder
+                        const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100"><rect width="100" height="100" fill="rgba(0,204,255,0.05)"/><line x1="20" y1="20" x2="80" y2="80" stroke="rgba(0,204,255,0.2)" stroke-width="5"/><line x1="80" y1="20" x2="20" y2="80" stroke="rgba(0,204,255,0.2)" stroke-width="5"/><circle cx="50" cy="50" r="30" fill="none" stroke="rgba(0,204,255,0.3)" stroke-width="5"/></svg>`;
+                        img.src = `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
+                        img.style.opacity = "0.5";
+                      }
+                     // Reset info panel
+                     itemInfoTitle.textContent = "Empty Slot";
+                     itemInfoDesc.textContent = "This inventory slot is empty.";
+                     itemUseButton.disabled = true;
+                     itemDropButton.disabled = true;
+                     selectedSlot.classList.remove("selected");
+                     selectedSlot = null;
+                 }
+            }
+        }
+    });
+
+
+    // ----- Email Section Logic -----
+    function populateEmailList() {
+        emailList.innerHTML = ''; // Clear previous list
+        emails.sort((a, b) => b.id - a.id); // Sort newest first (optional)
+
+        emails.forEach(email => {
+            const li = document.createElement('li');
+            li.setAttribute('data-email-id', email.id);
+            li.classList.toggle('read', email.read);
+            li.classList.toggle('unread', !email.read); // Add unread class
+
+            const senderSpan = document.createElement('span');
+            senderSpan.className = 'sender holo-text';
+            senderSpan.textContent = email.sender;
+
+            const subjectSpan = document.createElement('span');
+            subjectSpan.className = 'subject holo-text';
+            subjectSpan.textContent = email.subject;
+
+            li.appendChild(senderSpan);
+            li.appendChild(subjectSpan);
+
+            li.addEventListener('click', () => {
+                displayEmailContent(email.id);
+                // Highlight this item
+                document.querySelectorAll('#emailList li').forEach(item => item.classList.remove('active'));
+                li.classList.add('active');
+            });
+
+            emailList.appendChild(li);
+        });
+    }
+
+    function displayEmailContent(emailId) {
+        const email = emails.find(e => e.id === emailId);
+        if (email) {
+            // Hide placeholder, show content elements
+            emailPlaceholder.style.display = 'none';
+            emailSubjectEl.style.display = 'block';
+            emailMetaEl.style.display = 'block';
+            emailBodyEl.style.display = 'block';
+
+            // Populate content
+            emailSubjectEl.textContent = email.subject;
+            emailSenderEl.textContent = `From: ${email.sender}`;
+            emailDateEl.textContent = `Received: ${email.date}`;
+            emailBodyEl.textContent = email.body;
+
+            // Mark as read (both in data and visually)
+            if (!email.read) {
+                email.read = true;
+                const listItem = emailList.querySelector(`li[data-email-id="${emailId}"]`);
+                if (listItem) {
+                    listItem.classList.remove('unread');
+                    listItem.classList.add('read');
+                }
+            }
+             // Scroll content to top
+            emailContent.scrollTop = 0;
+        }
+    }
+
+     function resetEmailContent() {
+        // Show placeholder, hide content elements
+        emailPlaceholder.style.display = 'block';
+        emailSubjectEl.style.display = 'none';
+        emailMetaEl.style.display = 'none';
+        emailBodyEl.style.display = 'none';
+        // Clear active selection in list
+        document.querySelectorAll('#emailList li').forEach(item => item.classList.remove('active'));
+    }
+
+
+    // ----- Ripple Effect on Click -----
+    document.addEventListener("click", function(e) {
+        // Prevent ripple effect on UI elements like buttons or slots
+        if (e.target.closest('button, .inventory-slot, #emailList li')) {
+            return;
+        }
+
+        const ripple = document.createElement("div");
+        ripple.classList.add("ripple");
+        // Base size on viewport, but keep it relatively contained
+        const size = Math.min(window.innerWidth, window.innerHeight) * 0.6; // Smaller base size
+        ripple.style.width = ripple.style.height = size + "px";
+        // Center the ripple on the click, considering its own size
+        ripple.style.left = e.clientX - size / 2 + "px";
+        ripple.style.top = e.clientY - size / 2 + "px";
+
+        document.body.appendChild(ripple);
+        ripple.addEventListener("animationend", () => {
+            ripple.remove();
+        });
+    });
+
+
+    // ----- Three.js Scene & Animation Code (Minimal Changes) -----
+    // Renamed functions to avoid potential conflicts if 'init'/'animate' are used elsewhere
     let scene, camera, renderer;
     let corridor;
     let ceilingMesh, leftWallMesh, rightWallMesh;
     let glyphs = [];
-    let globalGlyphFade = 0; // Global factor for glyph opacity
-
+    let globalGlyphFade = 0;
     const CORRIDOR_SIZE = 2500;
     let mouse = new THREE.Vector2(0, 0);
     let targetRotationX = 0, targetRotationY = 0;
@@ -477,7 +919,7 @@ navButtons.forEach(btn => {
     const repulsionForce = 1.5;
     const friction = 0.93;
 
-    function init() {
+    function initThreeJS() { // Renamed
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0d1b2a);
       scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0007);
@@ -486,7 +928,13 @@ navButtons.forEach(btn => {
       camera.lookAt(0, 0, 0);
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      document.body.appendChild(renderer.domElement);
+       // Insert the canvas behind the UI elements
+      renderer.domElement.style.position = 'fixed';
+      renderer.domElement.style.top = '0';
+      renderer.domElement.style.left = '0';
+      renderer.domElement.style.zIndex = '-1'; // Put it in the background
+      document.body.insertBefore(renderer.domElement, document.body.firstChild);
+
 
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
       scene.add(ambientLight);
@@ -510,30 +958,10 @@ navButtons.forEach(btn => {
       ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
       ceilingTexture.repeat.set(2, 2);
 
-      const leftWallMat = new THREE.MeshPhongMaterial({
-        map: leftWallTexture,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.7
-      });
-      const rightWallMat = new THREE.MeshPhongMaterial({
-        map: rightWallTexture,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.7
-      });
-      const floorMat = new THREE.MeshPhongMaterial({
-        map: floorTexture,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.7
-      });
-      const ceilingMat = new THREE.MeshPhongMaterial({
-        map: ceilingTexture,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.7
-      });
+      const leftWallMat = new THREE.MeshPhongMaterial({ map: leftWallTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+      const rightWallMat = new THREE.MeshPhongMaterial({ map: rightWallTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+      const floorMat = new THREE.MeshPhongMaterial({ map: floorTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+      const ceilingMat = new THREE.MeshPhongMaterial({ map: ceilingTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
 
       const planeGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
       ceilingMesh = new THREE.Mesh(planeGeo, ceilingMat);
@@ -543,254 +971,81 @@ navButtons.forEach(btn => {
 
       leftWallMesh = new THREE.Mesh(planeGeo, leftWallMat);
       leftWallMesh.rotation.y = Math.PI / 2;
-      leftWallMesh.position.x = -CORRIDOR_SIZE / 2 - 500;
+      leftWallMesh.position.x = -CORRIDOR_SIZE / 2 - 500; // Start off-screen
       corridor.add(leftWallMesh);
 
       rightWallMesh = new THREE.Mesh(planeGeo, rightWallMat);
       rightWallMesh.rotation.y = -Math.PI / 2;
-      rightWallMesh.position.x = CORRIDOR_SIZE / 2 + 500;
+      rightWallMesh.position.x = CORRIDOR_SIZE / 2 + 500; // Start off-screen
       corridor.add(rightWallMesh);
 
       plexusGroup = createScrollingPlexus();
       plexusGroup.rotation.x = -0.2;
       plexusGroup.renderOrder = 1;
-      plexusGroup.scale.set(0, 0, 0);
+      plexusGroup.scale.set(0, 0, 0); // Start scaled down
       scene.add(plexusGroup);
 
-      const glyphLetters = [
-        "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
-        "𐎠","𐎣","𐎫"
-      ];
+      const glyphLetters = ["ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ","𐎠","𐎣","𐎫"];
       for (let i = 0; i < 30; i++) {
         const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
         const sprite = createGlyphSprite(letter);
-        if (Math.random() < 0.5) {
-          spawnGlyphOnWall(sprite);
-        } else {
-          sprite.position.set(
-            (Math.random() - 0.5) * CORRIDOR_SIZE,
-            Math.random() * 1950 - 700,
-            -Math.random() * CORRIDOR_SIZE
-          );
-        }
-        sprite.userData = {
-          basePosition: sprite.position.clone(),
-          oscillationSpeed: Math.random() * 0.5 + 0.5,
-          velocity: new THREE.Vector3(0, 0, 0),
-          lifetime: 0,
-          maxLifetime: 12 + Math.random() * 12
-        };
+        if (Math.random() < 0.5) spawnGlyphOnWall(sprite);
+        else sprite.position.set((Math.random() - 0.5) * CORRIDOR_SIZE, Math.random() * 1950 - 700, -Math.random() * CORRIDOR_SIZE);
+        sprite.userData = { basePosition: sprite.position.clone(), oscillationSpeed: Math.random() * 0.5 + 0.5, velocity: new THREE.Vector3(0, 0, 0), lifetime: 0, maxLifetime: 12 + Math.random() * 12 };
         glyphs.push(sprite);
         scene.add(sprite);
       }
 
-      // ====== Event Listeners ======
       window.addEventListener("resize", onWindowResize, false);
       document.addEventListener("mousemove", onDocumentMouseMove, false);
-
-      // UI Panel Navigation
-      const navButtons = document.querySelectorAll("nav button");
-      const sections = ["inventory", "map", "email", "codex", "scanner"];
-      navButtons.forEach(btn => {
-        btn.addEventListener("click", () => {
-          navButtons.forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          sections.forEach(s => {
-            const el = document.getElementById(s);
-            if (btn.getAttribute("data-section") === s) {
-              el.classList.add("active");
-            } else {
-              el.classList.remove("active");
-            }
-          });
-        });
-      });
     }
 
-    function createScrollingPlexus() {
-      const group = new THREE.Group();
-      const nodeCount = 160;
-      const threshold = 435;
-      const scrollSpeed = 1.0;
-      const regionMinX = -1100, regionMaxX = 1100;
-      const regionMinY = -1100, regionMaxY = -700;
-      const regionMinZ = -3000, regionMaxZ = 1200;
-      const regionWidth = regionMaxX - regionMinX;
-      const regionDepth = regionMaxZ - regionMinZ;
-      const nodes = [];
-      for (let i = 0; i < nodeCount; i++) {
-        const x = THREE.MathUtils.randFloat(regionMinX, regionMaxX);
-        const y = THREE.MathUtils.randFloat(regionMinY, regionMaxY);
-        const z = THREE.MathUtils.randFloat(regionMinZ, regionMaxZ);
-        const v = new THREE.Vector3(x, y, z);
-        v.userData = {
-          phase: Math.random() * Math.PI * 2,
-          amplitude: 20 + Math.random() * 10,
-          scrollSpeed
-        };
-        nodes.push(v);
-      }
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
-      geometry.setAttribute('uv', new THREE.Float32BufferAttribute([], 2));
-      const material = new THREE.ShaderMaterial({
-        uniforms: {
-          lineColor: { value: new THREE.Color(0x00ccff) },
-          center: { value: new THREE.Vector2(0.5, 0.5) },
-          maxDist: { value: 1.0 }
-        },
-        vertexShader: `
-          varying vec2 vUv;
-          void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: `
-          uniform vec3 lineColor;
-          uniform vec2 center;
-          uniform float maxDist;
-          varying vec2 vUv;
-          void main() {
-            float d = distance(vUv, center);
-            float alpha = 1.0 - smoothstep(0.0, maxDist, d);
-            gl_FragColor = vec4(lineColor, alpha);
-          }
-        `,
-        transparent: true,
-        depthTest: true,
-        depthWrite: false
-      });
-      const plexusLines = new THREE.LineSegments(geometry, material);
-      plexusLines.frustumCulled = false;
-      plexusLines.renderOrder = 1;
-      plexusLines.userData = {
-        nodes,
-        regionMinX, regionMaxX,
-        regionMinZ, regionMaxZ,
-        regionWidth, regionDepth,
-        threshold
-      };
-      group.add(plexusLines);
-      return group;
-    }
-
-    function createCodeTexture(size) {
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#0d1b2a";
-      ctx.fillRect(0, 0, size, size);
-      ctx.fillStyle = "rgba(0, 204, 255, 0.4)";
-      ctx.font = "10px monospace";
-      const codeChars = [
-        "0", "1", "∑", "∆", "≈", "≠", "Ω", "π", "Σ", "Δ",
-        "¤", "¥", "µ", "∂", "ƒ", "Ξ", "Ψ", "Φ", "Λ", "Ω"
-      ];
-      const columns = 40, rows = 50;
-      const colWidth = size / columns, rowHeight = size / rows;
-      for (let c = 0; c < columns; c++) {
-        for (let r = 0; r < rows; r++) {
-          const char = codeChars[Math.floor(Math.random() * codeChars.length)];
-          let x = c * colWidth + colWidth * 0.1;
-          let y = r * rowHeight + rowHeight * 0.8;
-          ctx.fillText(char, x, y);
-        }
-      }
-      return new THREE.CanvasTexture(canvas);
-    }
-
-    function createCircuitTexture(size) {
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#0d1b2a";
-      ctx.fillRect(0, 0, size, size);
-      const lineCount = 25;
-      for (let i = 0; i < lineCount; i++) {
-        ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
-        ctx.lineWidth = Math.random() * 2 + 1;
-        ctx.beginPath();
-        let x1 = Math.random() * size, y1 = Math.random() * size;
-        let x2 = x1 + (Math.random() - 0.5) * 150, y2 = y1 + (Math.random() - 0.5) * 150;
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-      const arcCount = 15;
-      for (let i = 0; i < arcCount; i++) {
-        ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
-        ctx.lineWidth = Math.random() * 2 + 1;
-        ctx.beginPath();
-        let cx = Math.random() * size, cy = Math.random() * size;
-        let r = Math.random() * 40 + 10;
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      const textCount = 10;
-      ctx.fillStyle = "rgba(0, 204, 255, 0.25)";
-      ctx.font = "14px monospace";
-      for (let i = 0; i < textCount; i++) {
-        let tx = Math.random() * size, ty = Math.random() * size;
-        let hexString = Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase();
-        ctx.fillText(hexString, tx, ty);
-      }
-      return new THREE.CanvasTexture(canvas);
-    }
-
-    function onWindowResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    function onDocumentMouseMove(e) {
-      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-      const maxRotation = 0.08;
-      targetRotationY = mouse.x * maxRotation;
-      targetRotationX = mouse.y * maxRotation;
-    }
-
-    function animate() {
-      requestAnimationFrame(animate);
+    function animateThreeJS() { // Renamed
+      requestAnimationFrame(animateThreeJS);
       const time = Date.now() * 0.001;
-      const elapsedTime = time - loadingStartTime;
-      
-      // Global glyph fade (starts after 3.2s)
-      globalGlyphFade = (elapsedTime < 3.2) ? 0 : Math.min((elapsedTime - 3.2) / 1, 1);
-      
-      // Smooth corridor rotation
+      const elapsedTime = time - loadingStartTime; // Use the stored start time
+
+      // Make sure elapsedTime is valid before using it
+      if (isNaN(elapsedTime)) return;
+
+      // Global glyph fade (starts slightly later now)
+      const glyphStartDelay = 3.5;
+      globalGlyphFade = (elapsedTime < glyphStartDelay) ? 0 : Math.min((elapsedTime - glyphStartDelay) / 1.5, 1); // Slower fade in
+
       corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
 
-      // Animate walls sliding in (first 2 seconds)
-      if (elapsedTime < 2) {
-        const progress = elapsedTime / 2;
-        leftWallMesh.position.x = (-CORRIDOR_SIZE/2 - 500) + progress * 500;
-        rightWallMesh.position.x = (CORRIDOR_SIZE/2 + 500) - progress * 500;
-      } else {
-        leftWallMesh.position.x = -CORRIDOR_SIZE/2;
-        rightWallMesh.position.x = CORRIDOR_SIZE/2;
-      }
+      // Animate walls sliding in (sync with overall fade-in time)
+      const wallAnimDuration = 2.0;
+      const wallStartDelay = 0.5; // Start after login fade starts
+       if (elapsedTime >= wallStartDelay && elapsedTime < wallStartDelay + wallAnimDuration) {
+          const progress = (elapsedTime - wallStartDelay) / wallAnimDuration;
+          const easeProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI); // Ease-in-out
+          leftWallMesh.position.x = (-CORRIDOR_SIZE/2 - 500) + easeProgress * 500;
+          rightWallMesh.position.x = (CORRIDOR_SIZE/2 + 500) - easeProgress * 500;
+        } else if (elapsedTime >= wallStartDelay + wallAnimDuration) {
+          leftWallMesh.position.x = -CORRIDOR_SIZE/2;
+          rightWallMesh.position.x = CORRIDOR_SIZE/2;
+        }
 
-      // Scroll the code textures on walls
+
       floorTexture.offset.y += SCROLL_SPEED_FLOOR;
       leftWallTexture.offset.y += SCROLL_SPEED_CODE;
       rightWallTexture.offset.y += SCROLL_SPEED_CODE;
       ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.5;
 
-      // Animate plexus appearance (scale between 3 and 4 seconds)
-      if (elapsedTime < 3) {
-        plexusGroup.scale.set(0, 0, 0);
-      } else if (elapsedTime < 4) {
-        const s = (elapsedTime - 3);
-        plexusGroup.scale.set(s, s, s);
-      } else {
-        plexusGroup.scale.set(1, 1, 1);
-      }
+      // Animate plexus appearance (sync with nav appearance)
+       const plexusStartDelay = 2.5;
+       const plexusAnimDuration = 1.5;
+        if (elapsedTime < plexusStartDelay) {
+            plexusGroup.scale.set(0, 0, 0);
+        } else if (elapsedTime < plexusStartDelay + plexusAnimDuration) {
+            const s = (elapsedTime - plexusStartDelay) / plexusAnimDuration;
+            const easeS = 0.5 - 0.5 * Math.cos(s * Math.PI); // Ease-in-out scale
+            plexusGroup.scale.set(easeS, easeS, easeS);
+        } else {
+            plexusGroup.scale.set(1, 1, 1);
+        }
 
       if (plexusGroup && plexusGroup.children.length > 0) {
         updateScrollingPlexus(plexusGroup.children[0], time);
@@ -800,149 +1055,143 @@ navButtons.forEach(btn => {
       renderer.render(scene, camera);
     }
 
-    function updateScrollingPlexus(plexusLines, time) {
-      const geometry = plexusLines.geometry;
-      const { nodes, regionMinX, regionMaxX, regionMinZ, regionMaxZ, regionWidth, regionDepth, threshold } = plexusLines.userData;
-      const positions = [];
-      const uvs = [];
-      for (let i = 0; i < nodes.length; i++) {
-        const n = nodes[i];
-        n.y += Math.sin(time + n.userData.phase) * 0.2;
-        n.z += n.userData.scrollSpeed;
-        if (n.z > regionMaxZ + 200) {
-          n.z = regionMinZ - 50;
+    // --- Helper functions for Three.js (mostly unchanged) ---
+    function createScrollingPlexus(){ /* ... unchanged ... */
+        const group = new THREE.Group();
+        const nodeCount = 160, threshold = 435, scrollSpeed = 1.0;
+        const regionMinX = -1100, regionMaxX = 1100, regionMinY = -1100, regionMaxY = -700;
+        const regionMinZ = -3000, regionMaxZ = 1200;
+        const regionWidth = regionMaxX - regionMinX, regionDepth = regionMaxZ - regionMinZ;
+        const nodes = [];
+        for (let i = 0; i < nodeCount; i++) {
+            const x = THREE.MathUtils.randFloat(regionMinX, regionMaxX);
+            const y = THREE.MathUtils.randFloat(regionMinY, regionMaxY);
+            const z = THREE.MathUtils.randFloat(regionMinZ, regionMaxZ);
+            const v = new THREE.Vector3(x, y, z);
+            v.userData = { phase: Math.random() * Math.PI * 2, amplitude: 20 + Math.random() * 10, scrollSpeed };
+            nodes.push(v);
         }
-      }
-      for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-          const dist = nodes[i].distanceTo(nodes[j]);
-          if (dist < threshold) {
-            positions.push(nodes[i].x, nodes[i].y, nodes[i].z);
-            positions.push(nodes[j].x, nodes[j].y, nodes[j].z);
-            const u1 = (nodes[i].x - regionMinX) / (regionMaxX - regionMinX);
-            const v1 = (nodes[i].z - regionMinZ) / regionDepth;
-            const u2 = (nodes[j].x - regionMinX) / (regionMaxX - regionMinX);
-            const v2 = (nodes[j].z - regionMinZ) / regionDepth;
-            uvs.push(u1, v1);
-            uvs.push(u2, v2);
-          }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute([], 2));
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+            lineColor: { value: new THREE.Color(0x00ccff) }, center: { value: new THREE.Vector2(0.5, 0.5) }, maxDist: { value: 1.0 } },
+            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            fragmentShader: `uniform vec3 lineColor; uniform vec2 center; uniform float maxDist; varying vec2 vUv; void main() { float d = distance(vUv, center); float alpha = 1.0 - smoothstep(0.0, maxDist, d); gl_FragColor = vec4(lineColor, alpha * 0.6); }`, // Reduced alpha slightly
+            transparent: true, depthTest: true, depthWrite: false });
+        const plexusLines = new THREE.LineSegments(geometry, material);
+        plexusLines.frustumCulled = false; plexusLines.renderOrder = 1;
+        plexusLines.userData = { nodes, regionMinX, regionMaxX, regionMinZ, regionMaxZ, regionWidth, regionDepth, threshold };
+        group.add(plexusLines);
+        return group;
+    }
+    function updateScrollingPlexus(plexusLines, time) { /* ... unchanged ... */
+        const geometry = plexusLines.geometry;
+        const { nodes, regionMinX, regionMaxX, regionMinZ, regionMaxZ, regionWidth, regionDepth, threshold } = plexusLines.userData;
+        const positions = []; const uvs = [];
+        for (let i = 0; i < nodes.length; i++) {
+            const n = nodes[i];
+            n.y += Math.sin(time * 0.5 + n.userData.phase) * 0.2; // Slower vertical oscillation
+            n.z += n.userData.scrollSpeed;
+            if (n.z > regionMaxZ + 200) n.z = regionMinZ - 50;
         }
-      }
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-      geometry.attributes.position.needsUpdate = true;
-      geometry.attributes.uv.needsUpdate = true;
-      geometry.computeBoundingSphere();
+        for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+            const dist = nodes[i].distanceTo(nodes[j]);
+            if (dist < threshold) {
+                positions.push(nodes[i].x, nodes[i].y, nodes[i].z); positions.push(nodes[j].x, nodes[j].y, nodes[j].z);
+                const u1 = (nodes[i].x - regionMinX) / regionWidth; const v1 = (nodes[i].z - regionMinZ) / regionDepth;
+                const u2 = (nodes[j].x - regionMinX) / regionWidth; const v2 = (nodes[j].z - regionMinZ) / regionDepth;
+                uvs.push(u1, v1); uvs.push(u2, v2);
+            } } }
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geometry.attributes.position.needsUpdate = true; geometry.attributes.uv.needsUpdate = true;
+        geometry.computeBoundingSphere();
+    }
+    function createCodeTexture(size) { /* ... unchanged ... */
+        const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext("2d"); ctx.fillStyle = "#0d1b2a"; ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = "rgba(0, 204, 255, 0.4)"; ctx.font = "10px monospace";
+        const codeChars = ["0","1","∑","∆","≈","≠","Ω","π","Σ","Δ","¤","¥","µ","∂","ƒ","Ξ","Ψ","Φ","Λ","Ω"];
+        const columns = 40, rows = 50; const colWidth = size / columns, rowHeight = size / rows;
+        for (let c = 0; c < columns; c++) { for (let r = 0; r < rows; r++) {
+            const char = codeChars[Math.floor(Math.random() * codeChars.length)];
+            let x = c * colWidth + colWidth * 0.1; let y = r * rowHeight + rowHeight * 0.8;
+            ctx.fillText(char, x, y); } } return new THREE.CanvasTexture(canvas);
+    }
+    function createCircuitTexture(size) { /* ... unchanged ... */
+        const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext("2d"); ctx.fillStyle = "#0d1b2a"; ctx.fillRect(0, 0, size, size);
+        const lineCount = 25;
+        for (let i = 0; i < lineCount; i++) { ctx.strokeStyle = "rgba(0, 204, 255, 0.3)"; ctx.lineWidth = Math.random() * 2 + 1; ctx.beginPath();
+            let x1 = Math.random() * size, y1 = Math.random() * size; let x2 = x1 + (Math.random() - 0.5) * 150, y2 = y1 + (Math.random() - 0.5) * 150;
+            ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+        const arcCount = 15;
+        for (let i = 0; i < arcCount; i++) { ctx.strokeStyle = "rgba(0, 204, 255, 0.3)"; ctx.lineWidth = Math.random() * 2 + 1; ctx.beginPath();
+            let cx = Math.random() * size, cy = Math.random() * size; let r = Math.random() * 40 + 10;
+            ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); }
+        const textCount = 10; ctx.fillStyle = "rgba(0, 204, 255, 0.25)"; ctx.font = "14px monospace";
+        for (let i = 0; i < textCount; i++) { let tx = Math.random() * size, ty = Math.random() * size;
+            let hexString = Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase(); ctx.fillText(hexString, tx, ty); }
+        return new THREE.CanvasTexture(canvas);
+    }
+    function onWindowResize() { /* ... unchanged ... */
+        camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+    function onDocumentMouseMove(e) { /* ... unchanged ... */
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        const maxRotation = 0.08; targetRotationY = mouse.x * maxRotation; targetRotationX = mouse.y * maxRotation; }
+    function updateGlyphs() { /* ... unchanged ... */
+        glyphs.forEach(sprite => {
+            sprite.userData.lifetime += 0.016; const fade = 1 - (sprite.userData.lifetime / sprite.userData.maxLifetime);
+            sprite.material.opacity = Math.max(fade, 0) * globalGlyphFade; // Use global fade factor
+            if (fade <= 0.05) {
+                sprite.userData.lifetime = 0; sprite.userData.maxLifetime = 12 + Math.random() * 12;
+                if (Math.random() < 0.5) spawnGlyphOnWall(sprite);
+                else sprite.position.set((Math.random() - 0.5) * CORRIDOR_SIZE, Math.random() * 1950 - 700, -Math.random() * CORRIDOR_SIZE);
+                sprite.userData.basePosition.copy(sprite.position); sprite.userData.velocity.set(0, 0, 0);
+                sprite.material.opacity = 1.0 * globalGlyphFade; // Reset opacity considering global fade
+            }
+            const t = Date.now() * 0.001 * sprite.userData.oscillationSpeed;
+            sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 15;
+            sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 15;
+            const pos = sprite.position.clone(); pos.project(camera);
+            const glyphScreenX = (pos.x * 0.5 + 0.5) * window.innerWidth; const glyphScreenY = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+            const mouseScreenX = (mouse.x + 1) * 0.5 * window.innerWidth; const mouseScreenY = (-mouse.y + 1) * 0.5 * window.innerHeight;
+            const dist = Math.hypot(glyphScreenX - mouseScreenX, glyphScreenY - mouseScreenY);
+            if (dist < repulsionDistance) {
+                const dx = glyphScreenX - mouseScreenX; const dy = glyphScreenY - mouseScreenY; const angle = Math.atan2(dy, dx);
+                const pushX = Math.cos(angle) * repulsionForce; const pushY = Math.sin(angle) * repulsionForce;
+                sprite.userData.velocity.x += pushX; sprite.userData.velocity.y += pushY;
+            }
+            sprite.userData.velocity.multiplyScalar(friction);
+            sprite.position.x += sprite.userData.velocity.x; sprite.position.y += sprite.userData.velocity.y;
+            const d = camera.position.distanceTo(sprite.position);
+            const minDist = 500, maxDist = 2000; const scaleClose = 400, scaleFar = 200;
+            const clampDist = THREE.MathUtils.clamp(d, minDist, maxDist); const alpha = (clampDist - minDist) / (maxDist - minDist);
+            const finalScale = scaleClose * (1 - alpha) + scaleFar * alpha;
+            sprite.scale.set(finalScale, finalScale, 1);
+        });
+    }
+    function spawnGlyphOnWall(sprite) { /* ... unchanged ... */
+        const wallTypes = [0, 1, 3]; const wallType = wallTypes[Math.floor(Math.random() * wallTypes.length)];
+        const offset = 50; let x, y;
+        if (wallType === 0) { x = -CORRIDOR_SIZE / 2 + offset; y = Math.random() * 1950 - 700; }
+        else if (wallType === 1) { x = CORRIDOR_SIZE / 2 - offset; y = Math.random() * 1950 - 700; }
+        else { y = CORRIDOR_SIZE / 2 - offset; x = (Math.random() - 0.5) * CORRIDOR_SIZE; }
+        const z = -Math.random() * CORRIDOR_SIZE; sprite.position.set(x, y, z);
+    }
+    function createGlyphSprite(letter) { /* ... unchanged ... */
+        const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128;
+        const ctx = canvas.getContext("2d"); ctx.clearRect(0, 0, 128, 128);
+        ctx.font = "100px Arial"; ctx.fillStyle = "rgba(0,204,255,1.0)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(letter, 64, 64); const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.1, sizeAttenuation: true }); // sizeAttenuation enabled
+        const sprite = new THREE.Sprite(material); sprite.renderOrder = 2; sprite.scale.set(120, 120, 1); // Initial scale set here, but updateGlyphs overrides it based on distance
+        return sprite;
     }
 
-    function updateGlyphs() {
-      glyphs.forEach(sprite => {
-        sprite.userData.lifetime += 0.016;
-        const fade = 1 - (sprite.userData.lifetime / sprite.userData.maxLifetime);
-        sprite.material.opacity = Math.max(fade, 0) * globalGlyphFade;
-        if (fade <= 0.05) {
-          sprite.userData.lifetime = 0;
-          sprite.userData.maxLifetime = 12 + Math.random() * 12;
-          if (Math.random() < 0.5) {
-            spawnGlyphOnWall(sprite);
-          } else {
-            sprite.position.set(
-              (Math.random() - 0.5) * CORRIDOR_SIZE,
-              Math.random() * 1950 - 700,
-              -Math.random() * CORRIDOR_SIZE
-            );
-          }
-          sprite.userData.basePosition.copy(sprite.position);
-          sprite.userData.velocity.set(0, 0, 0);
-          sprite.material.opacity = 1.0 * globalGlyphFade;
-        }
-        const t = Date.now() * 0.001 * sprite.userData.oscillationSpeed;
-        sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 15;
-        sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 15;
-        const pos = sprite.position.clone();
-        pos.project(camera);
-        const glyphScreenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
-        const glyphScreenY = (-pos.y * 0.5 + 0.5) * window.innerHeight;
-        const mouseScreenX = (mouse.x + 1) * 0.5 * window.innerWidth;
-        const mouseScreenY = (-mouse.y + 1) * 0.5 * window.innerHeight;
-        const dist = Math.hypot(glyphScreenX - mouseScreenX, glyphScreenY - mouseScreenY);
-        if (dist < repulsionDistance) {
-          const dx = glyphScreenX - mouseScreenX;
-          const dy = glyphScreenY - mouseScreenY;
-          const angle = Math.atan2(dy, dx);
-          const pushX = Math.cos(angle) * repulsionForce;
-          const pushY = Math.sin(angle) * repulsionForce;
-          sprite.userData.velocity.x += pushX;
-          sprite.userData.velocity.y += pushY;
-        }
-        sprite.userData.velocity.multiplyScalar(friction);
-        sprite.position.x += sprite.userData.velocity.x;
-        sprite.position.y += sprite.userData.velocity.y;
-        const d = camera.position.distanceTo(sprite.position);
-        const minDist = 500, maxDist = 2000;
-        const scaleClose = 400, scaleFar = 200;
-        const clampDist = THREE.MathUtils.clamp(d, minDist, maxDist);
-        const alpha = (clampDist - minDist) / (maxDist - minDist);
-        const finalScale = scaleClose * (1 - alpha) + scaleFar * alpha;
-        sprite.scale.set(finalScale, finalScale, 1);
-      });
-    }
-
-    function spawnGlyphOnWall(sprite) {
-      const wallTypes = [0, 1, 3];
-      const wallType = wallTypes[Math.floor(Math.random() * wallTypes.length)];
-      const offset = 50;
-      let x, y;
-      if (wallType === 0) {
-        x = -CORRIDOR_SIZE / 2 + offset;
-        y = Math.random() * 1950 - 700;
-      } else if (wallType === 1) {
-        x = CORRIDOR_SIZE / 2 - offset;
-        y = Math.random() * 1950 - 700;
-      } else {
-        y = CORRIDOR_SIZE / 2 - offset;
-        x = (Math.random() - 0.5) * CORRIDOR_SIZE;
-      }
-      const z = -Math.random() * CORRIDOR_SIZE;
-      sprite.position.set(x, y, z);
-    }
-
-    function createGlyphSprite(letter) {
-      const canvas = document.createElement("canvas");
-      canvas.width = 128;
-      canvas.height = 128;
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, 128, 128);
-      ctx.font = "100px Arial";
-      ctx.fillStyle = "rgba(0,204,255,1.0)";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(letter, 64, 64);
-      const texture = new THREE.CanvasTexture(canvas);
-      const material = new THREE.SpriteMaterial({
-        map: texture,
-        transparent: true,
-        alphaTest: 0.1,
-      });
-      material.sizeAttenuation = true;
-      const sprite = new THREE.Sprite(material);
-      sprite.renderOrder = 2;
-      sprite.scale.set(120, 120, 1);
-      return sprite;
-    }
-
-    document.addEventListener("click", function(e) {
-      const ripple = document.createElement("div");
-      ripple.classList.add("ripple");
-      const diameter = Math.max(window.innerWidth, window.innerHeight);
-      ripple.style.width = ripple.style.height = diameter + "px";
-      ripple.style.left = e.clientX - diameter / 2 + "px";
-      ripple.style.top = e.clientY - diameter / 2 + "px";
-      document.body.appendChild(ripple);
-      ripple.addEventListener("animationend", () => {
-        ripple.remove();
-      });
-    });
   </script>
 </body>
 </html>
