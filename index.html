@@ -24,6 +24,34 @@
       display: block;
     }
     
+    /* ===== Intro Message Overlay ===== */
+    #introMessage {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--accent-color);
+      font-size: 2.5em;
+      font-weight: bold;
+      z-index: 300;
+      opacity: 0;
+      animation: introAnim 3s forwards;
+    }
+    @keyframes introAnim {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+      40% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.2);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
     /* ===== Navigation Bar ===== */
     nav {
       position: fixed;
@@ -32,11 +60,18 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 100;
+      z-index: 200;
       background: rgba(0,0,0,0.5);
       padding: 10px;
       box-shadow: 0 0 10px rgba(0,204,255,0.5);
       backdrop-filter: blur(5px);
+      opacity: 0;
+      animation: navFadeIn 1s forwards;
+      animation-delay: 3s;
+    }
+    @keyframes navFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
     /* Initially hide buttons with a slight upward offset */
     nav button {
@@ -54,12 +89,11 @@
       animation: buttonFadeIn 0.8s forwards;
     }
     /* Staggered delays – center "email" appears first */
-    nav button[data-section="email"] { animation-delay: 2.2s; }
-    nav button[data-section="inventory"] { animation-delay: 2.4s; }
-    nav button[data-section="map"] { animation-delay: 2.6s; }
-    nav button[data-section="codex"] { animation-delay: 2.8s; }
-    nav button[data-section="scanner"] { animation-delay: 3.0s; }
-
+    nav button[data-section="email"] { animation-delay: 3.2s; }
+    nav button[data-section="inventory"] { animation-delay: 3.4s; }
+    nav button[data-section="map"] { animation-delay: 3.6s; }
+    nav button[data-section="codex"] { animation-delay: 3.8s; }
+    nav button[data-section="scanner"] { animation-delay: 4.0s; }
     @keyframes buttonFadeIn {
       from { opacity: 0; transform: translateY(-20px); }
       to { opacity: 1; transform: translateY(0); }
@@ -71,6 +105,16 @@
       transform: scale(1.05);
     }
     
+    /* ===== Content Wrapper for Floating UI Panels ===== */
+    #contentWrapper {
+      opacity: 0;
+      animation: contentFadeIn 1s forwards;
+      animation-delay: 3.2s;
+    }
+    @keyframes contentFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
     /* ===== Floating UI Panels ===== */
     .content-card {
       position: fixed;
@@ -140,6 +184,9 @@
   </style>
 </head>
 <body>
+  <!-- ===== Intro Message ===== -->
+  <div id="introMessage">Welcome, Vesta Vyntarion.</div>
+  
   <!-- ===== Navigation ===== -->
   <nav>
     <button data-section="inventory" class="active">Inventory</button>
@@ -148,29 +195,32 @@
     <button data-section="codex">Codex</button>
     <button data-section="scanner">Scanner</button>
   </nav>
-
-  <!-- ===== Floating UI Panels ===== -->
-  <div id="inventory" class="content-card active">
-    <h1>Inventory</h1>
-    <p>Inventory details go here.</p>
+  
+  <!-- ===== Content Panels Wrapper ===== -->
+  <div id="contentWrapper">
+    <!-- ===== Floating UI Panels ===== -->
+    <div id="inventory" class="content-card active">
+      <h1>Inventory</h1>
+      <p>Inventory details go here.</p>
+    </div>
+    <div id="map" class="content-card">
+      <h1>Map</h1>
+      <p>Map details go here.</p>
+    </div>
+    <div id="email" class="content-card">
+      <h1>Email</h1>
+      <p>Email details go here.</p>
+    </div>
+    <div id="codex" class="content-card">
+      <h1>Codex</h1>
+      <p>Codex details go here.</p>
+    </div>
+    <div id="scanner" class="content-card">
+      <h1>Scanner</h1>
+      <p>Scanner details go here.</p>
+    </div>
   </div>
-  <div id="map" class="content-card">
-    <h1>Map</h1>
-    <p>Map details go here.</p>
-  </div>
-  <div id="email" class="content-card">
-    <h1>Email</h1>
-    <p>Email details go here.</p>
-  </div>
-  <div id="codex" class="content-card">
-    <h1>Codex</h1>
-    <p>Codex details go here.</p>
-  </div>
-  <div id="scanner" class="content-card">
-    <h1>Scanner</h1>
-    <p>Scanner details go here.</p>
-  </div>
-
+  
   <!-- ===== Three.js Scene & Animus Corridor Simulation ===== -->
   <script>
     let scene, camera, renderer;
