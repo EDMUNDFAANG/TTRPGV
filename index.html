@@ -26,18 +26,19 @@
       display: block;
     }
     
-    /* ===== Holographic Text Style ===== */
+    /* ===== Holographic Text Style (Refined for crispness) ===== */
     .holo-text {
-      /* Use the Orbitron font */
       font-family: 'Orbitron', sans-serif;
-      /* Create a glowing, robotic effect */
-      text-shadow: 0 0 8px rgba(0,204,255,0.7);
-      /* Apply a repeating SVG pattern inside the text */
+      font-weight: bold;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-shadow: 0 0 2px rgba(0,204,255,0.8), 0 0 5px rgba(0,204,255,0.5);
+      /* Use a repeating SVG pattern for subtle detail */
       background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cdefs%3E%3Cpattern id='p' patternUnits='userSpaceOnUse' width='200' height='200'%3E%3Ccircle cx='100' cy='100' r='50' stroke='rgba(0,204,255,0.3)' stroke-width='2' fill='none' /%3E%3Cline x1='0' y1='0' x2='200' y2='200' stroke='rgba(0,204,255,0.3)' stroke-width='2' /%3E%3C/pattern%3E%3C/defs%3E%3Crect width='200' height='200' fill='url(%23p)' /%3E%3C/svg%3E") repeat;
       -webkit-background-clip: text;
       background-clip: text;
-      color: transparent;
-      opacity: 0.9;
+      -webkit-text-fill-color: transparent;
+      opacity: 0.95;
     }
     
     /* ===== Intro Message Overlay ===== */
@@ -47,10 +48,9 @@
       left: 50%;
       transform: translate(-50%, -50%);
       font-size: 2.5em;
-      font-weight: bold;
       z-index: 300;
       opacity: 0;
-      animation: introAnim 5s forwards;
+      animation: introAnim 3s forwards;
     }
     @keyframes introAnim {
       0% {
@@ -601,7 +601,7 @@
       // Animate walls sliding in (first 2 seconds)
       if (elapsedTime < 2) {
         const progress = elapsedTime / 2;
-        leftWallMesh.position.x = (-CORRIDOR_SIZE/2 - 500) + progress * 500; // from off-screen to target
+        leftWallMesh.position.x = (-CORRIDOR_SIZE/2 - 500) + progress * 500;
         rightWallMesh.position.x = (CORRIDOR_SIZE/2 + 500) - progress * 500;
       } else {
         leftWallMesh.position.x = -CORRIDOR_SIZE/2;
@@ -686,7 +686,6 @@
       glyphs.forEach(sprite => {
         sprite.userData.lifetime += 0.016;
         const fade = 1 - (sprite.userData.lifetime / sprite.userData.maxLifetime);
-        // Multiply individual fade with globalGlyphFade for synchronized fading
         sprite.material.opacity = Math.max(fade, 0) * globalGlyphFade;
         if (fade <= 0.05) {
           sprite.userData.lifetime = 0;
