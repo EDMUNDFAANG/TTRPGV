@@ -173,7 +173,19 @@
       const cube = new THREE.Mesh(geometry, material);
       scene.add(cube);
 
+      const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(4000, 4000, 4000));
+      const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1 });
+      const lineSegments = new THREE.LineSegments(edges, lineMaterial);
+      scene.add(lineSegments);
 
+      const planeMaterial = new THREE.MeshBasicMaterial({
+      color: 0x333333, // dark gray to contrast with blue bg
+      side: THREE.DoubleSide,
+      wireframe: false
+});
+
+
+      
       scene.add(corridor);
 
       // Create multiple floating glyphs that gently oscillate
