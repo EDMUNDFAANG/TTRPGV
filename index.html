@@ -120,7 +120,7 @@
     let scene, camera, renderer;
     let corridor;                         // main corridor group
     let floorMesh, ceilingMesh, leftWallMesh, rightWallMesh;
-    let motionLinesGroup;                // lines on the floor
+    let motionLinesGroup;                 // motion lines on the floor
     let glyphs = [];
 
     const CORRIDOR_SIZE = 2500;
@@ -128,16 +128,16 @@
     const repulsionForce = 1.5;
     const friction = 0.93;
 
-    // Speeds
-    const SCROLL_SPEED_FLOOR = 0.0005;   // floor & ceiling circuit
-    const SCROLL_SPEED_CODE = 0.0005;    // walls code
-    const MOTION_LINE_SPEED = 1;         // forward speed of floor lines
+    // Speeds for scrolling
+    const SCROLL_SPEED_FLOOR = 0.0005;   // for floor & ceiling circuit
+    const SCROLL_SPEED_CODE = 0.0005;    // for wall code cascading
+    const MOTION_LINE_SPEED = 1;         // speed of motion lines (forward)
 
     // Mouse & rotation
     let mouse = new THREE.Vector2(0, 0);
     let targetRotationX = 0, targetRotationY = 0;
 
-    // Textures
+    // Textures for individual faces
     let floorTexture, ceilingTexture, leftWallTexture, rightWallTexture;
 
     init();
@@ -151,7 +151,6 @@
 
       /* ===== Camera ===== */
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
-      // Position camera so that we see the corridor from inside
       camera.position.set(0, 0, 1800);
       camera.lookAt(0, 0, 0);
 
@@ -171,7 +170,7 @@
       corridor = new THREE.Group();
       scene.add(corridor);
 
-      // Floor & Ceiling => circuit texture
+      // Floor & Ceiling: use circuit texture
       floorTexture = createCircuitTexture(512);
       floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
       floorTexture.repeat.set(2, 2);
@@ -180,14 +179,14 @@
       ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
       ceilingTexture.repeat.set(2, 2);
 
-      // Walls => code texture
+      // Walls: use code texture (tighter & smaller)
       leftWallTexture = createCodeTexture(512);
       leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping;
-      leftWallTexture.repeat.set(2, 2);
+      leftWallTexture.repeat.set(4, 5); // more columns/rows for tighter code
 
       rightWallTexture = createCodeTexture(512);
       rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
-      rightWallTexture.repeat.set(2, 2);
+      rightWallTexture.repeat.set(4, 5);
 
       const floorMat = new THREE.MeshPhongMaterial({
         map: floorTexture,
@@ -214,49 +213,46 @@
         opacity: 0.7
       });
 
-      // Floor
+      // Create floor, ceiling, and walls
       const floorGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
       floorMesh = new THREE.Mesh(floorGeo, floorMat);
       floorMesh.rotation.x = -Math.PI / 2;
       floorMesh.position.y = -CORRIDOR_SIZE / 2;
       corridor.add(floorMesh);
 
-      // Ceiling
       const ceilingGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
       ceilingMesh = new THREE.Mesh(ceilingGeo, ceilingMat);
       ceilingMesh.rotation.x = Math.PI / 2;
       ceilingMesh.position.y = CORRIDOR_SIZE / 2;
       corridor.add(ceilingMesh);
 
-      // Left Wall
       const leftWallGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
       leftWallMesh = new THREE.Mesh(leftWallGeo, leftWallMat);
       leftWallMesh.rotation.y = Math.PI / 2;
       leftWallMesh.position.x = -CORRIDOR_SIZE / 2;
       corridor.add(leftWallMesh);
 
-      // Right Wall
       const rightWallGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
       rightWallMesh = new THREE.Mesh(rightWallGeo, rightWallMat);
       rightWallMesh.rotation.y = -Math.PI / 2;
       rightWallMesh.position.x = CORRIDOR_SIZE / 2;
       corridor.add(rightWallMesh);
 
-      // (No back wall => extends into fog)
+      // (No back wall so the corridor recedes into fog)
 
       /* ===== Motion Lines on the Floor ===== */
       motionLinesGroup = new THREE.Group();
       scene.add(motionLinesGroup);
-      // Create ~12 lines with random lengths, spaced in Z
+      // Create 12 motion lines with random (but uniformly computed) lengths
       for (let i = 0; i < 12; i++) {
         const line = createMotionLine();
-        // random z from -CORRIDOR_SIZE to 0
+        // Random initial z position
         line.position.z = -Math.random() * CORRIDOR_SIZE;
         motionLinesGroup.add(line);
       }
 
       /* ===== Glyph Sprites ===== */
-      // A broader set of archaic/rune-like symbols
+      // Expanded set of symbols (archaic, runes, digits, letters)
       const glyphLetters = [
         // Greek
         "Λ","Δ","Ω","ψ","Σ","Φ","Ξ","Π",
@@ -264,12 +260,12 @@
         "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
         // Misc. symbols
         "𐎠","𐎣","𐎫","⸮","§","¤","※","✦",
-        // ASCII / digits
+        // ASCII & Hex
         "0","1","2","3","4","5","6","7","8","9",
         "A","B","C","D","E","F"
       ];
-      // Create ~40 glyphs
-      for (let i = 0; i < 40; i++) {
+      // Create 50 glyphs
+      for (let i = 0; i < 50; i++) {
         const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
         const sprite = createGlyphSprite(letter);
         sprite.position.set(
@@ -288,11 +284,11 @@
         scene.add(sprite);
       }
 
-      /* ===== Listeners ===== */
+      /* ===== Event Listeners ===== */
       window.addEventListener("resize", onWindowResize, false);
       document.addEventListener("mousemove", onDocumentMouseMove, false);
 
-      // Nav button toggles
+      // Navigation button toggles
       const navButtons = document.querySelectorAll("nav button");
       const sections = ["inventory", "map", "email", "codex", "scanner"];
       navButtons.forEach(btn => {
@@ -308,17 +304,14 @@
       });
     }
 
-    /* Create the circuit background for floor/ceiling */
+    /* Create the circuit texture for floor and ceiling */
     function createCircuitTexture(size) {
       const canvas = document.createElement("canvas");
       canvas.width = size;
       canvas.height = size;
       const ctx = canvas.getContext("2d");
-
       ctx.fillStyle = "#0d1b2a";
       ctx.fillRect(0, 0, size, size);
-
-      // Draw random circuit lines
       const lineCount = 25;
       for (let i = 0; i < lineCount; i++) {
         ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
@@ -332,8 +325,6 @@
         ctx.lineTo(x2, y2);
         ctx.stroke();
       }
-
-      // Arcs/circles
       const arcCount = 15;
       for (let i = 0; i < arcCount; i++) {
         ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
@@ -345,8 +336,6 @@
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.stroke();
       }
-
-      // Random hex strings
       const textCount = 10;
       ctx.fillStyle = "rgba(0, 204, 255, 0.25)";
       ctx.font = "14px monospace";
@@ -356,52 +345,49 @@
         let hexString = Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase();
         ctx.fillText(hexString, tx, ty);
       }
-
       return new THREE.CanvasTexture(canvas);
     }
 
-    /* Create the code background for walls */
+    /* Create the code texture for the walls (tightly packed, small font) */
     function createCodeTexture(size) {
       const canvas = document.createElement("canvas");
       canvas.width = size;
       canvas.height = size;
       const ctx = canvas.getContext("2d");
-
       ctx.fillStyle = "#0d1b2a";
       ctx.fillRect(0, 0, size, size);
-
-      // We'll generate columns of "cascading code" style
+      // Use a smaller, tightly packed font
+      ctx.fillStyle = "rgba(0, 204, 255, 0.4)";
+      ctx.font = "10px monospace";
+      const columns = 40;  // more columns => tighter
+      const rows = 50;
+      const colWidth = size / columns;
+      const rowHeight = size / rows;
+      // Expanded set of characters (mix of runes, digits, and letters)
       const codeChars = [
         "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
         "𐎠","𐎣","𐎫","§","¤","※","✦",
         "0","1","2","3","4","5","6","7","8","9",
         "A","B","C","D","E","F"
       ];
-      const columns = 20;
-      const rows = 25;
-      const colWidth = size / columns;
-      const rowHeight = size / rows;
-
-      ctx.fillStyle = "rgba(0, 204, 255, 0.35)";
-      ctx.font = "16px monospace";
-
       for (let c = 0; c < columns; c++) {
         for (let r = 0; r < rows; r++) {
           const char = codeChars[Math.floor(Math.random() * codeChars.length)];
-          let x = c * colWidth + (colWidth * 0.3);
-          let y = r * rowHeight + (rowHeight * 0.7);
+          let x = c * colWidth + colWidth * 0.1;
+          let y = r * rowHeight + rowHeight * 0.8;
           ctx.fillText(char, x, y);
         }
       }
-
       return new THREE.CanvasTexture(canvas);
     }
 
-    /* Create a horizontal motion line at random length, placed at floor level */
+    /* Create a horizontal motion line at floor level with a random length */
     function createMotionLine() {
-      const length = Math.random() * (CORRIDOR_SIZE * 0.7) + (CORRIDOR_SIZE * 0.3);
+      // Set length in a defined range (ensuring the line is never too short)
+      const minLength = CORRIDOR_SIZE * 0.4;
+      const maxLength = CORRIDOR_SIZE * 0.7;
+      const length = Math.random() * (maxLength - minLength) + minLength;
       const geometry = new THREE.BufferGeometry();
-      // We'll center it horizontally
       const halfLen = length / 2;
       const vertices = new Float32Array([
         -halfLen, 0, 0,
@@ -410,9 +396,8 @@
       geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
       const material = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.6 });
       const line = new THREE.Line(geometry, material);
-      // Place it at y = floor + 1
-      line.position.y = -CORRIDOR_SIZE/2 + 1;
-      // Random x offset so they're not all in the center
+      line.position.y = -CORRIDOR_SIZE / 2 + 1;
+      // Random horizontal offset
       line.position.x = (Math.random() - 0.5) * (CORRIDOR_SIZE * 0.6);
       return line;
     }
@@ -429,12 +414,10 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(letter, 64, 64);
-
       const texture = new THREE.CanvasTexture(canvas);
       const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
       material.sizeAttenuation = true;
       const sprite = new THREE.Sprite(material);
-      // We'll scale them more in animate()
       sprite.scale.set(120, 120, 1);
       return sprite;
     }
@@ -445,7 +428,6 @@
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
-
     function onDocumentMouseMove(e) {
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -457,49 +439,42 @@
     /* Animation Loop */
     function animate() {
       requestAnimationFrame(animate);
-
       const time = Date.now() * 0.001;
 
-      // Slight corridor “warp”
+      // Slight warp
       corridor.scale.z = 1 + 0.15 * Math.sin(time * 0.2);
-
-      // Smooth rotation
       corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
 
-      // Scroll floor & ceiling textures in Y => forward motion
+      // Scroll textures
       floorTexture.offset.y += SCROLL_SPEED_FLOOR;
       ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR;
-
-      // Scroll walls in Y => code cascades downward
       leftWallTexture.offset.y += SCROLL_SPEED_CODE;
       rightWallTexture.offset.y += SCROLL_SPEED_CODE;
 
-      // Update motion lines: move them forward in z
+      // Update motion lines: move forward in z and reset if past camera
       motionLinesGroup.children.forEach(line => {
         line.position.z += MOTION_LINE_SPEED;
-        // If a line is past the camera, reset it behind
         if (line.position.z > 200) {
           line.position.z = -CORRIDOR_SIZE;
-          // random length & x offset again
-          const newLength = Math.random() * (CORRIDOR_SIZE * 0.7) + (CORRIDOR_SIZE * 0.3);
+          // Regenerate a new length for consistency
+          const minLength = CORRIDOR_SIZE * 0.4;
+          const maxLength = CORRIDOR_SIZE * 0.7;
+          const newLength = Math.random() * (maxLength - minLength) + minLength;
           const halfLen = newLength / 2;
           const posAttr = line.geometry.getAttribute('position');
           posAttr.setXYZ(0, -halfLen, 0, 0);
           posAttr.setXYZ(1, halfLen, 0, 0);
           posAttr.needsUpdate = true;
-
           line.position.x = (Math.random() - 0.5) * (CORRIDOR_SIZE * 0.6);
         }
       });
 
-      // Update glyphs (fade, push, scale)
+      // Update glyphs: fade, push, and scale based on distance
       glyphs.forEach(sprite => {
         sprite.userData.lifetime += 0.016;
         const fade = 1 - (sprite.userData.lifetime / sprite.userData.maxLifetime);
         sprite.material.opacity = Math.max(fade, 0);
-
-        // Reset if almost invisible
         if (fade <= 0.05) {
           sprite.userData.lifetime = 0;
           sprite.userData.maxLifetime = 12 + Math.random() * 12;
@@ -512,13 +487,9 @@
           sprite.userData.velocity.set(0, 0, 0);
           sprite.material.opacity = 1.0;
         }
-
-        // Gentle oscillation
         const t = Date.now() * 0.001 * sprite.userData.oscillationSpeed;
-        sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 15; // increased a bit
+        sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 15;
         sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 15;
-
-        // Mouse push
         const pos = sprite.position.clone();
         pos.project(camera);
         const glyphScreenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
@@ -539,12 +510,12 @@
         sprite.position.x += sprite.userData.velocity.x;
         sprite.position.y += sprite.userData.velocity.y;
 
-        // Distance-based scale: bigger when closer, smaller when far
+        // Distance-based scaling: larger when close, smaller when far
         const d = camera.position.distanceTo(sprite.position);
         const minDist = 500, maxDist = 2000;
-        const scaleClose = 300, scaleFar = 100; // bigger overall
+        const scaleClose = 400, scaleFar = 200;
         const clampDist = THREE.MathUtils.clamp(d, minDist, maxDist);
-        const alpha = (clampDist - minDist) / (maxDist - minDist); 
+        const alpha = (clampDist - minDist) / (maxDist - minDist);
         const finalScale = scaleClose * (1 - alpha) + scaleFar * alpha;
         sprite.scale.set(finalScale, finalScale, 1);
       });
