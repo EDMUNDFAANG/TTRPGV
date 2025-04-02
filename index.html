@@ -109,12 +109,12 @@
     animate();
 
     function init() {
-      // Create scene with a holographic light blue background and fog for depth
+      // Create scene with fog to fade corridor edges
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0xb3e5fc);
       scene.fog = new THREE.FogExp2(0xb3e5fc, 0.0008);
 
-      // Set up camera
+      // Set up perspective camera
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
       camera.position.set(0, 0, 500);
 
@@ -123,14 +123,17 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
-      // Build corridor as an open box (no front face) using five planes
+      // Optional: Uncomment the following line to add a GridHelper for debugging
+      // const gridHelper = new THREE.GridHelper(4000, 40, 0xffffff, 0xffffff); scene.add(gridHelper);
+
+      // Build corridor as an open box (missing the front face) using five large planes
       corridor = new THREE.Group();
       const gridTexture = createGridTexture();
       const planeMaterial = new THREE.MeshBasicMaterial({
         map: gridTexture,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.8
+        opacity: 0.95  // Increased opacity for better visibility
       });
       const size = 4000;
       const half = size / 2;
@@ -167,19 +170,18 @@
 
       scene.add(corridor);
 
-      // Create floating glyphs that gently oscillate
+      // Create multiple floating glyphs that gently oscillate
       const glyphLetters = ["Λ", "Δ", "Ω", "ψ", "Σ", "Φ", "Ξ", "Π"];
-      // Increase number of glyphs for better coverage
       for (let i = 0; i < 20; i++) {
         const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
         const sprite = createGlyphSprite(letter);
-        // Random position within a portion of the corridor
+        // Position glyph randomly within a portion of the corridor
         sprite.position.set(
           (Math.random() - 0.5) * size * 0.6,
           (Math.random() - 0.5) * size * 0.6,
           -Math.random() * size * 0.5
         );
-        // Save base position and assign a random drift speed
+        // Save initial position and assign a drift speed
         sprite.userData = {
           basePosition: sprite.position.clone(),
           speed: Math.random() * 0.5 + 0.5
@@ -188,11 +190,11 @@
         glyphs.push(sprite);
       }
 
-      // Event listeners for resize and mouse movement
+      // Event listeners for window resize and mouse movement
       window.addEventListener('resize', onWindowResize, false);
       document.addEventListener('mousemove', onDocumentMouseMove, false);
       
-      // Navigation button events (UI overlay)
+      // Navigation button events for UI overlay
       const navButtons = document.querySelectorAll('nav button');
       const contentSections = document.querySelectorAll('.content-section');
       navButtons.forEach(button => {
@@ -216,11 +218,11 @@
       canvas.height = size;
       const ctx = canvas.getContext('2d');
 
-      // Fill with holographic light blue
+      // Fill with holographic light blue background
       ctx.fillStyle = "#b3e5fc";
       ctx.fillRect(0, 0, size, size);
 
-      // Draw thin white grid lines (increased opacity)
+      // Draw thin white grid lines with higher opacity
       ctx.strokeStyle = "rgba(255,255,255,0.9)";
       ctx.lineWidth = 1;
       const spacing = 50;
@@ -238,7 +240,7 @@
       }
       const texture = new THREE.CanvasTexture(canvas);
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      // Increase repeat so the grid appears denser
+      // Increase the repeat values to create a denser grid effect
       texture.repeat.set(40, 40);
       return texture;
     }
@@ -270,7 +272,7 @@
     }
 
     function onDocumentMouseMove(event) {
-      // Normalize mouse coordinates to [-1, 1]
+      // Normalize mouse coordinates to range [-1, 1]
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
       // Set target rotations based on mouse position
@@ -281,11 +283,11 @@
 
     function animate() {
       requestAnimationFrame(animate);
-      // Smoothly update corridor rotation based on mouse movement
+      // Smoothly update corridor rotation based on mouse input
       corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
 
-      // Animate glyphs with a gentle oscillation
+      // Animate glyphs with gentle oscillation
       glyphs.forEach(sprite => {
         const t = Date.now() * 0.001 * sprite.userData.speed;
         sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 10;
