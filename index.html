@@ -1,1588 +1,1197 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Animus Corridor Simulation [Refined v2]</title>
-    <!-- Load Orbitron font -->
-    <link href="https://fonts.googleapis.com/css?family=Orbitron" rel="stylesheet">
-    <!-- Three.js from CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        :root {
-            --bg-color: #0d1b2a;
-            --accent-color: #00ccff;
-            --text-color: rgba(0, 204, 255, 0.9);
-            --panel-bg: rgba(0, 10, 20, 0.5); /* Slightly darker, bluer panel bg */
-            --border-color: rgba(0, 204, 255, 0.3);
-            --hover-border-color: rgba(0, 204, 255, 0.6);
-            --active-bg: rgba(0, 204, 255, 0.2);
-            --pulse-color: rgba(0, 204, 255, 0.7); /* For activation pulses */
-            --scrollbar-thumb: var(--accent-color);
-            --scrollbar-track: rgba(0, 0, 0, 0.2);
-        }
-
-        /* ===== Reset & Base Styles ===== */
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background: var(--bg-color);
-            font-family: 'Orbitron', sans-serif;
-            color: var(--text-color);
-        }
-
-        canvas {
-            display: block;
-             /* Keep canvas visible, behind other elements */
-             position: fixed;
-             top: 0;
-             left: 0;
-             z-index: -1; /* Place behind all UI */
-        }
-
-        /* ===== Holographic Text Style ===== */
-        .holo-text {
-            font-family: 'Orbitron', sans-serif;
-            font-weight: bold;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            text-shadow: 0 0 4px rgba(0, 204, 255, 0.8), 0 0 8px rgba(0, 204, 255, 0.5);
-            color: var(--text-color);
-            animation: textPulse 4s infinite ease-in-out alternate; /* Subtle pulse */
-        }
-        @keyframes textPulse {
-             from { text-shadow: 0 0 4px rgba(0, 204, 255, 0.7), 0 0 8px rgba(0, 204, 255, 0.4); }
-             to { text-shadow: 0 0 6px rgba(0, 204, 255, 0.9), 0 0 12px rgba(0, 204, 255, 0.6); }
-        }
-        /* Less intense pulse for general text */
-        p.holo-text, span.holo-text, li .holo-text {
-            animation: none; /* Remove default pulse from paragraphs/spans */
-            text-shadow: 0 0 3px rgba(0, 204, 255, 0.8), 0 0 6px rgba(0, 204, 255, 0.5);
-        }
-
-
-        /* ===== Login Panel Styling & Boot-Up Animation ===== */
-        #loginPanel {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.95); /* Start slightly smaller */
-            width: 320px; /* Slightly wider */
-            padding: 35px;
-            border: 2px solid var(--border-color);
-            border-radius: 18px;
-            background: var(--panel-bg);
-            backdrop-filter: blur(10px);
-            text-align: center;
-            z-index: 400;
-            opacity: 0; /* Start hidden */
-            transition: opacity 1.2s ease-out, transform 1.2s ease-out;
-            pointer-events: none; /* Not interactive until visible */
-            box-shadow: 0 0 15px rgba(0, 204, 255, 0.1);
-            overflow: hidden; /* Contain pseudo-elements */
-            /* Add pseudo-element for scan line effect */
-        }
-        #loginPanel::before {
-             content: '';
-             position: absolute;
-             top: 0;
-             left: 10%; /* Start off-center */
-             width: 2px; /* Thin line */
-             height: 100%;
-             background: linear-gradient(
-                 to bottom,
-                 transparent 0%,
-                 rgba(0, 204, 255, 0.3) 50%,
-                 transparent 100%
-             );
-             opacity: 0;
-             animation: loginScan 5s linear infinite alternate;
-             animation-delay: 0.5s; /* Start after fade-in begins */
-        }
-
-        @keyframes loginScan {
-            0% { left: 10%; opacity: 0.3; }
-            100% { left: 90%; opacity: 0.6; } /* Move across and slightly brighten */
-        }
-
-        #loginPanel.visible {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1); /* Scale to full size */
-            pointer-events: auto;
-        }
-        #loginPanel.hidden {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.8);
-            pointer-events: none;
-            transition: opacity 0.6s ease-in, transform 0.6s ease-in; /* Faster fade out */
-        }
-        #loginPanel h1.holo-text { /* Make title stand out more */
-             font-size: 1.6em;
-             margin-bottom: 25px;
-         }
-        #loginPanel input {
-            width: 90%;
-            margin: 12px 0;
-            padding: 10px;
-            border: 1px solid var(--accent-color);
-            border-radius: 5px;
-            background: rgba(0,0,0, 0.2); /* Slightly visible background */
-            color: var(--accent-color);
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1em;
-            text-align: center;
-            transition: box-shadow 0.3s;
-        }
-         #loginPanel input:focus {
-             outline: none;
-             box-shadow: 0 0 8px var(--accent-color);
-         }
-
-        #loginPanel button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            border: 2px solid var(--accent-color);
-            background: transparent;
-            color: var(--accent-color);
-            cursor: pointer;
-            transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.1em;
-            border-radius: 5px;
-        }
-
-        #loginPanel button:hover {
-            background: var(--active-bg);
-             box-shadow: 0 0 10px var(--accent-color);
-             transform: translateY(-2px);
-        }
-         #loginPanel button:active {
-              transform: translateY(0px); /* Click down effect */
-         }
-
-        /* ===== Main Content ===== */
-        #mainContent {
-            display: block; /* Keep it block, control visibility with opacity/transform */
-            opacity: 0;
-            transform: translateY(20px); /* Start slightly down */
-            transition: opacity 1.5s ease-out, transform 1.5s ease-out;
-            transition-delay: 0.3s; /* Start fade slightly after login panel starts hiding */
-            pointer-events: none;
-        }
-
-        #mainContent.visible {
-            opacity: 1;
-             transform: translateY(0px); /* Slide up to position */
-            pointer-events: auto;
-        }
-
-        /* ===== Intro Message Overlay ===== */
-        #introMessage {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 2.8em; /* Slightly larger */
-            z-index: 300;
-            opacity: 0;
-            /* Starts animating after mainContent becomes visible */
-            animation: introAnim 3.5s forwards ease-out; /* Slightly longer */
-            /* Delay syncs with mainContent transition + delay (0.3 + 1.5 = 1.8s approx start) */
-            /* Let's make it start a bit sooner than nav */
-            animation-delay: 1.0s;
-        }
-
-        @keyframes introAnim { /* Refined easing and scale */
-            0% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.7);
-            }
-             20% { /* Faster rise */
-                  opacity: 1;
-                  transform: translate(-50%, -50%) scale(1.05);
-             }
-            80% { /* Hold longer */
-                 opacity: 1;
-                 transform: translate(-50%, -50%) scale(1);
-            }
-            100% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.9);
-                 pointer-events: none; /* Make sure it's not clickable after fading */
-            }
-        }
-
-
-        /* ===== Navigation Bar ===== */
-        nav {
-            position: fixed;
-            top: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 200;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 10px;
-            box-shadow: 0 0 15px rgba(0, 204, 255, 0.5); /* Enhanced shadow */
-            backdrop-filter: blur(8px); /* More blur */
-            opacity: 0;
-            transform: translateY(-30px); /* Start further up */
-            /* Animation starts after intro message begins fading out */
-            animation: navFadeSlideIn 1.2s forwards ease-out;
-            /* Delay should account for intro message hold time */
-            animation-delay: 3.0s; /* Delay from page load (adjust if intro anim timing changes) */
-        }
-
-        @keyframes navFadeSlideIn {
-            from {
-                opacity: 0;
-                 transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                 transform: translateY(0);
-            }
-        }
-
-
-        nav button {
-            background: transparent;
-            border: 2px solid var(--accent-color);
-            margin: 0 10px;
-            padding: 8px 16px;
-            cursor: pointer;
-            text-transform: uppercase;
-            transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
-            outline: none;
-            opacity: 0; /* Start hidden */
-            transform: translateY(-20px); /* Start up */
-            color: var(--text-color); /* Inherit text color */
-             border-radius: 4px;
-             box-shadow: 0 0 5px transparent; /* Placeholder for transition */
-            /* Animation Keyframes applied directly */
-            animation: buttonFadeSlideIn 0.8s forwards ease-out;
-        }
-
-        /* Staggered Delays for Nav Buttons (Relative to Nav Fade-In Start) */
-        nav button[data-section="inventory"] { animation-delay: 3.2s; } /* nav delay + 0.2s */
-        nav button[data-section="map"]       { animation-delay: 3.35s; }/* nav delay + 0.35s */
-        nav button[data-section="email"]     { animation-delay: 3.5s; } /* nav delay + 0.5s */
-        nav button[data-section="codex"]     { animation-delay: 3.65s; }/* nav delay + 0.65s */
-        nav button[data-section="scanner"]   { animation-delay: 3.8s; } /* nav delay + 0.8s */
-        nav button[data-section="vitals"]    { animation-delay: 3.95s; }/* nav delay + 0.95s */
-
-        @keyframes buttonFadeSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        nav button:hover,
-        nav button.active {
-            background: var(--active-bg);
-            color: #FFF; /* Brighter text */
-             box-shadow: 0 0 12px var(--accent-color); /* Glow effect */
-            /* Combine transforms smoothly */
-            transform: translateY(-2px) scale(1.03);
-        }
-         nav button:active {
-              transform: translateY(0) scale(1); /* Click down effect */
-         }
-
-
-        /* ===== Floating UI Panels ===== */
-        .content-card {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.98); /* Start slightly small */
-            width: 75%; /* Wider */
-            max-width: 950px;
-            height: 65vh; /* Slightly taller */
-            max-height: 650px;
-            padding: 25px;
-            border: 2px solid var(--border-color);
-            border-radius: 15px;
-            box-shadow: 0 0 25px rgba(0, 204, 255, 0.25); /* Softer, larger shadow */
-            background: var(--panel-bg);
-            backdrop-filter: blur(12px); /* Increased blur */
-            z-index: 100;
-            opacity: 0;
-            pointer-events: none;
-             /* Animate opacity, transform, and add border/shadow pulse */
-             transition: opacity 0.5s ease-out, transform 0.5s ease-out;
-             /* Prepare for activation animation */
-            border-color: var(--border-color);
-            box-shadow: 0 0 25px rgba(0, 204, 255, 0.25);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden; /* Changed from visible to hidden */
-        }
-
-        .content-card.active {
-            opacity: 1;
-            pointer-events: auto;
-            /* Run scale animation and pulse animation */
-             animation: panelActivate 0.5s ease-out forwards, panelPulse 0.6s ease-out forwards;
-        }
-
-        @keyframes panelActivate { /* Scale up slightly more dynamically */
-            from { transform: translate(-50%, -50%) scale(0.98); }
-             70% { transform: translate(-50%, -50%) scale(1.01); } /* Overshoot slightly */
-            to   { transform: translate(-50%, -50%) scale(1); }
-        }
-        @keyframes panelPulse { /* Brief bright border/shadow */
-            0% { border-color: var(--border-color); box-shadow: 0 0 25px rgba(0, 204, 255, 0.25); }
-            50% { border-color: var(--pulse-color); box-shadow: 0 0 35px var(--pulse-color); }
-             100% { border-color: var(--border-color); box-shadow: 0 0 25px rgba(0, 204, 255, 0.25); }
-         }
-
-        /* Staggered content appearance inside active panel */
-        .content-card.active h1,
-        .content-card.active .panel-content {
-            opacity: 0;
-             transform: translateY(10px);
-            animation: panelContentFadeIn 0.5s ease-out forwards;
-            animation-delay: 0.2s; /* Delay after panel activation animation starts */
-         }
-         @keyframes panelContentFadeIn {
-             to { opacity: 1; transform: translateY(0); }
-         }
-
-
-        .content-card h1 {
-            margin: 0 0 20px 0; /* More space below title */
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border-color);
-            text-align: center;
-            flex-shrink: 0;
-            font-size: 1.8em; /* Larger title */
-        }
-
-        .content-card .panel-content {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding-right: 15px; /* Space for scrollbar */
-        }
-
-        /* ===== Custom Scrollbar ===== */
-        .panel-content::-webkit-scrollbar,
-        .inventory-grid::-webkit-scrollbar,
-        .item-details::-webkit-scrollbar,
-        #emailList::-webkit-scrollbar,
-        #emailContent::-webkit-scrollbar {
-            width: 8px;
-        }
-        .panel-content::-webkit-scrollbar-track,
-        .inventory-grid::-webkit-scrollbar-track,
-        .item-details::-webkit-scrollbar-track,
-        #emailList::-webkit-scrollbar-track,
-        #emailContent::-webkit-scrollbar-track {
-            background: var(--scrollbar-track);
-            border-radius: 4px;
-        }
-        .panel-content::-webkit-scrollbar-thumb,
-        .inventory-grid::-webkit-scrollbar-thumb,
-        .item-details::-webkit-scrollbar-thumb,
-        #emailList::-webkit-scrollbar-thumb,
-        #emailContent::-webkit-scrollbar-thumb {
-            background-color: var(--scrollbar-thumb);
-            border-radius: 4px;
-            border: 2px solid var(--panel-bg); /* Match panel bg */
-        }
-         .panel-content::-webkit-scrollbar-thumb:hover,
-         .inventory-grid::-webkit-scrollbar-thumb:hover,
-         .item-details::-webkit-scrollbar-thumb:hover,
-         #emailList::-webkit-scrollbar-thumb:hover,
-         #emailContent::-webkit-scrollbar-thumb:hover {
-              background-color: var(--pulse-color); /* Highlight on hover */
-          }
-
-
-        /* ===== Inventory Container Styling ===== */
-        #inventoryContainer {
-             /* Inherits base panel styles via JS adding .content-card class conceptually */
-             /* Specific overrides: */
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.98);
-            z-index: 150; /* Ensure inventory is above standard content cards if overlapping */
-             width: 850px; /* Slightly wider */
-             height: 600px; /* Match other panels height better */
-             max-height: 70vh; /* Add max height */
-             padding: 20px;
-             background: var(--panel-bg);
-             backdrop-filter: blur(12px);
-             border: 2px solid var(--border-color);
-             border-radius: 15px;
-             box-shadow: 0 0 25px rgba(0, 204, 255, 0.25);
-             display: none; /* Start hidden with display: none */
-             flex-direction: row;
-             gap: 25px; /* More gap */
-             opacity: 0;
-             pointer-events: none;
-            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
-            /* Will also use panelActivate and panelPulse via active class */
-            overflow: hidden; /* Added overflow hidden */
-        }
-
-        #inventoryContainer.active {
-            display: flex; /* Change display to flex when active */
-            opacity: 1;
-            pointer-events: auto;
-            animation: panelActivate 0.5s ease-out forwards, panelPulse 0.6s ease-out forwards;
-         }
-         /* Staggered content appearance inside active inventory */
-        #inventoryContainer.active .inventory-grid,
-        #inventoryContainer.active .item-info {
-            opacity: 0;
-             transform: translateY(10px);
-             animation: panelContentFadeIn 0.5s ease-out forwards;
-            animation-delay: 0.2s;
-        }
-
-
-        .inventory-grid {
-            flex: 2; /* Grid takes more space */
-            display: grid;
-             grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* Slightly larger minimum */
-             grid-auto-rows: 100px; /* Square slots */
-            gap: 12px;
-            padding: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            overflow-y: auto;
-            align-content: start;
-             background: rgba(0,0,0, 0.1); /* Subtle grid background */
-        }
-
-
-        .inventory-slot {
-            width: 100%;
-            height: 100%;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            background: rgba(0, 0, 0, 0.4); /* Darker slots */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: border-color 0.3s, background-color 0.3s, transform 0.2s, box-shadow 0.3s;
-            cursor: pointer;
-            position: relative;
-             box-shadow: 0 0 4px transparent; /* for transition */
-             transform: scale(1);
-        }
-
-        .inventory-slot:hover {
-            border-color: var(--hover-border-color);
-            background-color: rgba(0, 204, 255, 0.1);
-             transform: scale(1.03); /* Subtle pop */
-             box-shadow: 0 0 8px var(--hover-border-color);
-        }
-
-        .inventory-slot.selected {
-            border-color: var(--accent-color);
-            background-color: rgba(0, 204, 255, 0.18);
-            box-shadow: 0 0 12px var(--accent-color);
-             transform: scale(1.02); /* Slightly scaled when selected */
-        }
-
-        .inventory-slot img {
-             max-width: 80%; /* Adjust size */
-             max-height: 80%;
-            object-fit: contain;
-             filter: drop-shadow(0 0 3px var(--accent-color)); /* Add slight glow to item image */
-            opacity: 0.9; /* Placeholder slightly faded */
-        }
-
-        /* Item Info Panel Styling */
-        .item-info {
-            flex: 1;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background: rgba(0, 0, 0, 0.15);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .item-details {
-            flex-grow: 1;
-            overflow-y: auto;
-            margin-bottom: 20px;
-             padding-right: 10px; /* scrollbar space */
-        }
-
-        .item-info h2 {
-             /* Inherits .holo-text pulse */
-            margin: 0 0 15px 0;
-             font-size: 1.4em;
-             color: var(--accent-color);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
-        }
-
-        .item-info p {
-             font-size: 1em;
-             line-height: 1.6;
-             color: var(--text-color);
-         }
-         .item-info p.holo-text { animation: none; } /* No pulse on description */
-
-        .item-actions {
-            flex-shrink: 0;
-            text-align: right;
-             border-top: 1px solid var(--border-color); /* Separator line */
-             padding-top: 15px;
-        }
-
-        .item-actions button {
-             /* Inherits base nav button styles conceptually, override/add specific */
-            background: transparent;
-            border: 2px solid var(--accent-color);
-             color: var(--accent-color);
-            margin-left: 10px;
-            padding: 8px 18px; /* Wider */
-            cursor: pointer;
-            text-transform: uppercase;
-             transition: background 0.3s, color 0.3s, transform 0.2s, box-shadow 0.3s;
-            font-family: 'Orbitron', sans-serif;
-             border-radius: 4px;
-             box-shadow: 0 0 5px transparent;
-         }
-
-        .item-actions button:hover:not(:disabled) {
-            background: var(--active-bg);
-             color: #FFF;
-             box-shadow: 0 0 10px var(--accent-color);
-             transform: translateY(-2px);
-        }
-         .item-actions button:active:not(:disabled) {
-              transform: translateY(0px);
-         }
-
-        .item-actions button:disabled {
-            border-color: rgba(0, 204, 255, 0.2);
-             color: rgba(0, 204, 255, 0.3);
-             cursor: not-allowed;
-             background: transparent;
-             box-shadow: none;
-             transform: none;
-        }
-
-         /* ===== Email Section Styling ===== */
-        #email .panel-content {
-             display: flex;
-             gap: 20px; /* Increased gap */
-             padding: 15px 0 0 0;
-             /* Ensure it animates in */
-              opacity: 1; transform: translateY(0);
-        }
-
-        #emailList {
-            flex: 1;
-            list-style: none;
-            padding: 0 20px 0 0; /* Increased right padding */
-            margin: 0;
-             border-right: 1px solid var(--border-color);
-             overflow-y: auto;
-            max-height: calc(65vh - 120px); /* Adjust based on panel height/padding */
-        }
-
-        #emailList li {
-             padding: 12px 15px;
-             border: 1px solid transparent;
-            border-bottom: 1px solid rgba(0, 204, 255, 0.1); /* Lighter separator */
-             margin-bottom: 6px;
-             border-radius: 5px;
-             cursor: pointer;
-             transition: background-color 0.3s, border-color 0.3s, transform 0.2s ease-out;
-             position: relative; /* For pseudo-elements */
-             overflow: hidden; /* Contain potential hover effects */
-        }
-
-        #emailList li::before { /* Subtle left border indicator on hover/active */
-             content: '';
-             position: absolute;
-             left: 0;
-             top: 0;
-             bottom: 0;
-             width: 3px;
-             background-color: var(--accent-color);
-             transform: scaleY(0);
-             transition: transform 0.3s ease;
-             transform-origin: bottom;
-         }
-
-        #emailList li:hover {
-            background-color: rgba(0, 204, 255, 0.08);
-             border-color: transparent; /* Use pseudo-element for highlight */
-             transform: translateX(5px);
-         }
-         #emailList li:hover::before {
-              transform: scaleY(1);
-              transform-origin: top;
-          }
-
-        #emailList li.active {
-            background-color: var(--active-bg);
-            border-color: transparent; /* Active uses pseudo-element */
-             transform: translateX(0px); /* Don't shift active item */
-         }
-         #emailList li.active::before {
-              transform: scaleY(1); /* Keep highlight visible */
-              transform-origin: center;
-          }
-
-
-        #emailList li .sender {
-            font-weight: bold;
-            display: block;
-            margin-bottom: 4px;
-            color: var(--accent-color);
-             font-size: 1.05em;
-        }
-
-        #emailList li .subject {
-            font-size: 0.9em;
-            color: var(--text-color);
-         }
-         #emailList li .sender.holo-text,
-         #emailList li .subject.holo-text {
-              animation: none; /* Remove pulse from list items */
-          }
-
-        #emailList li.read .subject { opacity: 0.6; } /* Dim read subject more */
-        #emailList li.read .sender { opacity: 0.8; } /* Slightly dim read sender */
-
-        #emailList li.unread::after { /* More distinct unread indicator */
-             content: '';
-             position: absolute;
-             right: 15px;
-             top: 50%;
-             transform: translateY(-50%);
-             width: 8px;
-             height: 8px;
-             background-color: var(--accent-color);
-             border-radius: 50%;
-             box-shadow: 0 0 6px var(--accent-color);
-        }
-
-        #emailContent {
-            flex: 2;
-            padding: 0 15px 0 10px;
-             overflow-y: auto;
-            max-height: calc(65vh - 120px);
-         }
-
-        #emailContent h2 { /* Subject in content view */
-             /* Inherits .holo-text pulse */
-            font-size: 1.5em;
-             color: var(--accent-color);
-             margin: 0 0 10px 0;
-             padding-bottom: 8px;
-             border-bottom: 1px solid var(--border-color);
-        }
-
-        #emailContent .email-meta {
-             font-size: 0.9em;
-             color: rgba(0, 204, 255, 0.7);
-             margin-bottom: 25px;
-             border-bottom: 1px dashed var(--border-color); /* Dashed separator */
-             padding-bottom: 15px;
-        }
-         #emailContent .email-meta span { display: block; margin-bottom: 5px; }
-
-        #emailContent .email-body {
-            font-size: 1em; /* Larger body text */
-            line-height: 1.7; /* More spacing */
-             white-space: pre-wrap; /* Preserve line breaks from data */
-            color: var(--text-color); /* Ensure uses standard text color */
-            padding-bottom: 20px;
-         }
-
-        #emailPlaceholder {
-             text-align: center;
-             padding: 60px 20px;
-             font-size: 1.2em;
-             color: rgba(0, 204, 255, 0.6);
-             border: 1px dashed var(--border-color);
-             border-radius: 8px;
-             margin-top: 20px;
-         }
-
-
-        /* ===== Refined Ripple Effect ===== */
-        .ripple {
-            position: absolute;
-            border-radius: 50%;
-             /* Sharper center, faster fade */
-            background: radial-gradient(circle, rgba(0, 204, 255, 0.25) 2%, rgba(0, 204, 255, 0.1) 20%, rgba(0, 204, 255, 0) 50%);
-            transform: scale(0);
-            pointer-events: none;
-             /* Faster, smaller ripple */
-             animation: ripple-effect 0.6s ease-out;
-             z-index: 50;
-        }
-
-        @keyframes ripple-effect {
-            from { transform: scale(0); opacity: 0.7; }
-            to   { transform: scale(1.8); opacity: 0; } /* Scale slightly less */
-        }
-
-        /* ===== Other Section Placeholders ===== */
-        #map .panel-content p,
-        #codex .panel-content p,
-        #scanner .panel-content p,
-        #vitals .panel-content p {
-            padding: 40px 20px;
-            font-size: 1.2em;
-            text-align: center;
-             color: rgba(0, 204, 255, 0.7);
-            line-height: 1.6;
-        }
-
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Animus Corridor Simulation</title>
+  <!-- Load Orbitron font -->
+  <link href="https://fonts.googleapis.com/css?family=Orbitron" rel="stylesheet">
+  <!-- Three.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #0d1b2a;
+      --accent-color: #00ccff;
+      --panel-bg: rgba(0, 0, 0, 0.4); /* Slightly less transparent */
+      --text-color: rgba(0, 204, 255, 0.9);
+      --border-color: rgba(0,204,255,0.3);
+      --hover-border-color: rgba(0,204,255,0.6);
+      --active-bg: rgba(0,204,255,0.2);
+    }
+    /* ===== Reset & Base Styles ===== */
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: var(--bg-color);
+      font-family: 'Orbitron', sans-serif;
+      color: var(--text-color); /* Default text color */
+    }
+    canvas {
+      display: block;
+    }
+
+    /* ===== Holographic Text Style ===== */
+    .holo-text {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: bold;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-shadow: 0 0 3px rgba(0,204,255,0.8), 0 0 6px rgba(0,204,255,0.5);
+      color: var(--text-color); /* Ensure holo-text uses the base text color */
+       /* Removed background clip for broader compatibility and less complexity */
+       /* Consider adding back if the effect is strongly desired */
+      opacity: 0.95;
+    }
+
+    /* ===== Login Panel Styling & Transition ===== */
+    #loginPanel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(1); /* Start at full scale */
+      width: 300px;
+      padding: 30px;
+      border: 2px solid var(--border-color);
+      border-radius: 20px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(8px);
+      text-align: center;
+      z-index: 400;
+      opacity: 1;
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out; /* Transition opacity and transform */
+      pointer-events: auto; /* Initially interactive */
+    }
+    #loginPanel.hidden {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8); /* Scale down on hide */
+        pointer-events: none; /* Not interactive when hidden */
+    }
+
+    #loginPanel input {
+      width: 90%;
+      margin: 10px 0;
+      padding: 8px;
+      border: 1px solid var(--accent-color);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--accent-color);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1em;
+      text-align: center;
+    }
+    #loginPanel button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      border: 2px solid var(--accent-color);
+      background: transparent;
+      color: var(--accent-color);
+      cursor: pointer;
+      transition: background 0.3s;
+      font-family: 'Orbitron', sans-serif;
+    }
+    #loginPanel button:hover {
+      background: var(--active-bg);
+    }
+
+    /* ===== Main Content (hidden until login) ===== */
+    #mainContent {
+      display: block; /* Keep as block, control visibility with opacity */
+      opacity: 0; /* Start hidden */
+      transition: opacity 1.5s ease-in; /* Fade in */
+      transition-delay: 0.5s; /* Delay fade-in until login panel fades out */
+      pointer-events: none; /* Not interactive until faded in */
+    }
+    #mainContent.visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* ===== Intro Message Overlay ===== */
+    #introMessage {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2.5em;
+      z-index: 300;
+      opacity: 0;
+      animation: introAnim 3s forwards;
+      animation-delay: 0.8s; /* Delay slightly more to follow login fade */
+    }
+    @keyframes introAnim {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+      40% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1); /* Slightly less jump */
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    /* ===== Navigation Bar ===== */
+    nav {
+      position: fixed;
+      top: 20px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 200;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      box-shadow: 0 0 10px rgba(0,204,255,0.5);
+      backdrop-filter: blur(5px);
+      opacity: 0; /* Start hidden */
+      animation: navFadeIn 1s forwards;
+      animation-delay: 2.5s; /* Delay more to sync with mainContent fade */
+    }
+    @keyframes navFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    nav button {
+      background: transparent;
+      border: 2px solid var(--accent-color);
+      margin: 0 10px;
+      padding: 8px 16px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.3s, color 0.3s, transform 0.3s;
+      outline: none;
+      opacity: 0; /* Start hidden */
+      transform: translateY(-20px);
+      animation: buttonFadeIn 0.8s forwards;
+      color: var(--text-color); /* Inherit text color */
+    }
+    /* Adjust delays to follow nav fade-in */
+    nav button[data-section="inventory"] { animation-delay: 2.7s; }
+    nav button[data-section="map"] { animation-delay: 2.9s; }
+    nav button[data-section="email"] { animation-delay: 3.1s; }
+    nav button[data-section="codex"] { animation-delay: 3.3s; }
+    nav button[data-section="scanner"] { animation-delay: 3.5s; }
+    nav button[data-section="vitals"] { animation-delay: 3.7s; }
+
+    @keyframes buttonFadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    nav button:hover,
+    nav button.active {
+      background: var(--active-bg);
+      color: #FFF; /* Brighter text on active/hover */
+      transform: scale(1.05) translateY(0); /* Ensure translateY is reset */
+    }
+
+    /* ===== Content Panels Wrapper ===== */
+    #contentWrapper {
+      /* This wrapper might not be strictly needed if panels fade individually */
+      /* Kept for structure, but animations now on .content-card */
+    }
+
+    /* ===== Floating UI Panels ===== */
+    .content-card {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      width: 70%; /* Slightly wider */
+      max-width: 900px; /* Max width */
+      height: 60vh; /* Set a height */
+      max-height: 600px; /* Max height */
+      padding: 25px;
+      border: 2px solid var(--border-color);
+      border-radius: 15px; /* Slightly less rounded */
+      box-shadow: 0 0 20px rgba(0,204,255,0.2);
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px); /* Increase blur */
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      display: flex; /* Use flexbox for internal layout */
+      flex-direction: column; /* Stack elements vertically */
+      overflow: hidden; /* Prevent content spill */
+    }
+    .content-card.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+      /* Add subtle animation on activation */
+      animation: panelActivate 0.5s ease-out forwards;
+    }
+    @keyframes panelActivate {
+        from { transform: translate(-50%, -50%) scale(0.98); }
+        to { transform: translate(-50%, -50%) scale(1); }
+    }
+    .content-card h1 {
+      margin: 0 0 15px 0; /* Add bottom margin to title */
+      padding-bottom: 10px; /* Space below title */
+      border-bottom: 1px solid var(--border-color); /* Separator line */
+      text-align: center;
+      flex-shrink: 0; /* Prevent title from shrinking */
+    }
+    .content-card .panel-content {
+       flex-grow: 1; /* Allow content area to fill space */
+       overflow-y: auto; /* Add scroll if content overflows */
+       padding-right: 10px; /* Space for scrollbar */
+    }
+     /* Custom Scrollbar */
+    .panel-content::-webkit-scrollbar {
+      width: 8px;
+    }
+    .panel-content::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.2);
+      border-radius: 4px;
+    }
+    .panel-content::-webkit-scrollbar-thumb {
+      background-color: var(--accent-color);
+      border-radius: 4px;
+      border: 2px solid var(--panel-bg);
+    }
+
+    /* ===== Inventory Container Styling ===== */
+   #inventoryContainer {
+      display: none; /* Hidden by default */
+      position: fixed; /* Use fixed like other panels */
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      z-index: 150; /* Slightly above other cards if needed */
+      width: 800px; /* Adjusted width */
+      height: 550px; /* Fixed height */
+      padding: 20px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px);
+      border: 2px solid var(--border-color);
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,204,255,0.2);
+      flex-direction: row; /* Side-by-side layout */
+      gap: 20px;
+      opacity: 0; /* For transition */
+      pointer-events: none;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+   }
+   #inventoryContainer.active {
+      display: flex; /* Show using flex */
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+      animation: panelActivate 0.5s ease-out forwards;
+    }
+
+    .inventory-grid {
+      flex: 2;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); /* Responsive columns */
+      grid-auto-rows: 90px; /* Fixed row height */
+      gap: 10px; /* Reduced gap */
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow-y: auto; /* Scroll if grid overflows */
+      align-content: start;
+    }
+     /* Custom Scrollbar for Inventory Grid */
+    .inventory-grid::-webkit-scrollbar { width: 6px; }
+    .inventory-grid::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    .inventory-grid::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
+
+    .inventory-slot {
+      width: 100%; /* Fill grid cell */
+      height: 100%; /* Fill grid cell */
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3); /* Darker slot background */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.3s, background-color 0.3s;
+      cursor: pointer;
+      position: relative; /* For potential item count overlay */
+    }
+    .inventory-slot:hover {
+      border-color: var(--hover-border-color);
+      background-color: rgba(0, 204, 255, 0.1);
+    }
+     .inventory-slot.selected { /* Style for selected slot */
+        border-color: var(--accent-color);
+        background-color: rgba(0, 204, 255, 0.15);
+        box-shadow: 0 0 8px var(--accent-color);
+    }
+    .inventory-slot img {
+      max-width: 85%; /* Slightly smaller image */
+      max-height: 85%;
+      object-fit: contain; /* Ensure aspect ratio is maintained */
+    }
+
+    /* Item Info Panel Styling */
+    .item-info {
+      flex: 1;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.1); /* Lighter background for contrast */
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between; /* Push actions to bottom */
+    }
+    .item-details {
+        flex-grow: 1; /* Allow details to take available space */
+        overflow-y: auto; /* Scroll long descriptions */
+        margin-bottom: 15px; /* Space before actions */
+    }
+    /* Custom Scrollbar for Item Details */
+    .item-details::-webkit-scrollbar { width: 6px; }
+    .item-details::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    .item-details::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
+
+    .item-info h2 {
+      margin: 0 0 10px 0;
+      font-size: 1.3em;
+      color: var(--accent-color); /* Highlight title */
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 5px;
+    }
+    .item-info p {
+      font-size: 0.95em; /* Slightly larger text */
+      line-height: 1.5; /* Better readability */
+      color: var(--text-color);
+    }
+    .item-actions {
+        flex-shrink: 0; /* Prevent actions area from shrinking */
+        text-align: right; /* Align buttons to the right */
+    }
+    .item-actions button {
+      background: transparent;
+      border: 2px solid var(--accent-color);
+      color: var(--accent-color);
+      margin-left: 10px; /* Use margin-left for right alignment */
+      padding: 8px 16px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.3s, color 0.3s;
+      font-family: 'Orbitron', sans-serif;
+    }
+    .item-actions button:hover {
+      background: var(--active-bg);
+      color: #FFF;
+    }
+     .item-actions button:disabled { /* Style for disabled buttons */
+        border-color: rgba(0, 204, 255, 0.2);
+        color: rgba(0, 204, 255, 0.3);
+        cursor: not-allowed;
+        background: transparent;
+    }
+
+    /* ===== Email Section Styling ===== */
+    #email .panel-content {
+        display: flex;
+        gap: 15px; /* Space between list and content */
+        padding: 15px 0 0 0; /* Adjust padding */
+    }
+    #emailList {
+        flex: 1; /* Takes up 1 part of the space */
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        border-right: 1px solid var(--border-color); /* Separator */
+        overflow-y: auto; /* Scroll for email list */
+        padding-right: 15px; /* Space before separator */
+        max-height: calc(60vh - 100px); /* Example height limit */
+    }
+     /* Custom Scrollbar for Email List */
+    #emailList::-webkit-scrollbar { width: 6px; }
+    #emailList::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    #emailList::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
+
+    #emailList li {
+        padding: 10px 12px;
+        border: 1px solid transparent; /* Placeholder for border transition */
+        border-bottom: 1px solid rgba(0, 204, 255, 0.15);
+        margin-bottom: 5px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s, border-color 0.3s;
+    }
+    #emailList li:hover {
+        background-color: rgba(0, 204, 255, 0.08);
+        border-color: rgba(0, 204, 255, 0.2);
+    }
+    #emailList li.active {
+        background-color: var(--active-bg);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 5px rgba(0, 204, 255, 0.3);
+    }
+    #emailList li .sender {
+        font-weight: bold;
+        display: block; /* Put sender on its own line */
+        margin-bottom: 3px;
+        color: var(--accent-color);
+    }
+    #emailList li .subject {
+        font-size: 0.9em;
+        color: var(--text-color);
+    }
+    #emailList li.read .subject { /* Style for read emails */
+        opacity: 0.7;
+    }
+     #emailList li.unread::before { /* Unread indicator */
+        content: '●';
+        color: var(--accent-color);
+        font-size: 0.8em;
+        margin-right: 8px;
+        display: inline-block;
+    }
+
+    #emailContent {
+        flex: 2; /* Takes up 2 parts of the space */
+        padding: 0 10px; /* Padding inside content area */
+        overflow-y: auto; /* Scroll for long emails */
+        max-height: calc(60vh - 100px); /* Match list height limit */
+    }
+     /* Custom Scrollbar for Email Content */
+    #emailContent::-webkit-scrollbar { width: 6px; }
+    #emailContent::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    #emailContent::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
+
+    #emailContent h2 { /* Subject in content view */
+        font-size: 1.4em;
+        color: var(--accent-color);
+        margin: 0 0 15px 0;
+        padding-bottom: 5px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    #emailContent .email-meta {
+        font-size: 0.85em;
+        color: rgba(0, 204, 255, 0.7);
+        margin-bottom: 20px;
+    }
+     #emailContent .email-meta span { display: block; } /* Meta info on separate lines */
+    #emailContent .email-body {
+        font-size: 0.95em;
+        line-height: 1.6;
+        white-space: pre-wrap; /* Preserve line breaks from data */
+    }
+    #emailPlaceholder { /* Message when no email is selected */
+      text-align: center;
+      margin-top: 50px;
+      font-size: 1.1em;
+      color: rgba(0, 204, 255, 0.6);
+    }
+
+    /* ===== Refined Ripple Effect ===== */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      /* Softer gradient, fades faster */
+      background: radial-gradient(circle, rgba(0,204,255,0.15) 5%, rgba(0,204,255,0.08) 25%, rgba(0,204,255,0) 55%);
+      transform: scale(0);
+      pointer-events: none;
+      /* Shorter animation duration, smaller final scale */
+      animation: ripple-effect 0.7s ease-out;
+      z-index: 50;
+      /* Removed ::after dashed lines */
+    }
+    @keyframes ripple-effect {
+      0% { transform: scale(0); opacity: 0.6; } /* Start smaller, slightly less opaque */
+      70% { transform: scale(1.5); opacity: 0.3; } /* Expand less */
+      100% { transform: scale(2.0); opacity: 0; }
+    }
+
+    /* ===== Other Section Placeholders ===== */
+    #map .panel-content p,
+    #codex .panel-content p,
+    #scanner .panel-content p,
+    #vitals .panel-content p {
+        padding-top: 20px;
+        font-size: 1.1em;
+        text-align: center;
+    }
+
+  </style>
 </head>
-
 <body>
-    <!-- ===== Login Panel (Starts hidden, made visible by JS) ===== -->
-    <div id="loginPanel">
-        <h1 class="holo-text">Access Required</h1>
-        <input type="text" id="username" placeholder="Designation" value="Vesta" /> <!-- Changed placeholder -->
-        <input type="password" id="passcode" placeholder="Auth Key" value="password" /> <!-- Changed placeholder -->
-        <button id="loginButton" class="holo-text">Initiate Link</button>
-    </div>
+  <!-- ===== Login Panel ===== -->
+  <div id="loginPanel"> <!-- Removed active class, handled by JS -->
+    <h1 class="holo-text">Access Required</h1>
+    <input type="text" id="username" placeholder="Username" value="Vesta"/> <!-- Pre-filled for demo -->
+    <input type="password" id="passcode" placeholder="Passcode" value="password" /> <!-- Pre-filled for demo -->
+    <button id="loginButton" class="holo-text">Initiate Link</button>
+  </div>
 
-    <!-- ===== Main Content (hidden until login) ===== -->
-    <div id="mainContent">
-        <!-- ===== Intro Message ===== -->
-        <div id="introMessage" class="holo-text">Syncing Neural Interface... Welcome, Vesta.</div> <!-- Updated text -->
+  <!-- ===== Main Content (hidden until login) ===== -->
+  <div id="mainContent">
+    <!-- ===== Intro Message ===== -->
+    <div id="introMessage" class="holo-text">Welcome, Vesta Vyntarion.</div>
 
-        <!-- ===== Navigation ===== -->
-        <nav>
-            <button data-section="inventory" class="holo-text">Inventory</button>
-            <button data-section="map" class="holo-text">Nav-Grid</button> <!-- Renamed -->
-            <button data-section="email" class="holo-text">Comms</button> <!-- Renamed -->
-            <button data-section="codex" class="holo-text">Codex</button>
-            <button data-section="scanner" class="holo-text">Scanner</button>
-            <button data-section="vitals" class="holo-text">Biometrics</button> <!-- Renamed -->
-        </nav>
+    <!-- ===== Navigation ===== -->
+    <nav>
+      <button data-section="inventory" class="holo-text">Inventory</button>
+      <button data-section="map" class="holo-text">Map</button>
+      <button data-section="email" class="holo-text">Email</button>
+      <button data-section="codex" class="holo-text">Codex</button>
+      <button data-section="scanner" class="holo-text">Scanner</button>
+      <button data-section="vitals" class="holo-text">Vitals</button>
+    </nav>
 
-        <!-- ===== Content Panels Wrapper ===== -->
-        <div id="contentWrapper">
-            <!-- MAP -->
-            <div id="map" class="content-card">
-                <h1 class="holo-text">Navigation Grid</h1>
-                <div class="panel-content">
-                    <p class="holo-text">Stellar Cartography Data Unavailable.<br>Awaiting Triangulation Lock.</p>
-                </div>
-            </div>
-            <!-- EMAIL -->
-            <div id="email" class="content-card">
-                <h1 class="holo-text">Comms Terminal</h1>
-                <div class="panel-content">
-                    <ul id="emailList"></ul>
-                    <div id="emailContent">
-                        <div id="emailPlaceholder" class="holo-text">Select encrypted transmission...</div>
-                        <h2 id="emailSubject" class="holo-text" style="display: none;"></h2>
-                        <div id="emailMeta" style="display: none;">
-                            <span id="emailSender" class="holo-text"></span>
-                            <span id="emailDate" class="holo-text"></span>
-                        </div>
-                        <div id="emailBody" style="display: none;"></div>
-                    </div>
-                </div>
-            </div>
-             <!-- CODEX -->
-            <div id="codex" class="content-card">
-                <h1 class="holo-text">Data Codex</h1>
-                <div class="panel-content">
-                    <p class="holo-text">Codex database empty.<br>Connect to external Archive Node or utilize Scanner for entries.</p>
-                </div>
-            </div>
-            <!-- SCANNER -->
-            <div id="scanner" class="content-card">
-                <h1 class="holo-text">Environmental Scanner</h1>
-                <div class="panel-content">
-                    <p class="holo-text">Scanner systems initializing...<br>Awaiting target lock or environmental input.</p>
-                </div>
-            </div>
-             <!-- VITALS -->
-            <div id="vitals" class="content-card">
-                <h1 class="holo-text">Biometrics Interface</h1>
-                <div class="panel-content">
-                    <p class="holo-text">Neural link telemetry unstable.<br>Recalibrating biometric feed... Stand by.</p>
-                </div>
-            </div>
+    <!-- ===== Content Panels Wrapper ===== -->
+    <div id="contentWrapper">
+      <!-- Note: Old inventory panel removed. New one is outside this wrapper -->
+      <div id="map" class="content-card">
+        <h1 class="holo-text">Navigation Grid</h1>
+        <div class="panel-content">
+           <p class="holo-text">Stellar Cartography Data Unavailable.</p>
+           <!-- Map content will go here -->
         </div>
-
-        <!-- ===== New Inventory Container (starts display:none) ===== -->
-        <div id="inventoryContainer">
-            <div class="inventory-grid">
-                 <!-- Slots will be populated / updated by JS -->
-                 <!-- Example structure (content set by JS) -->
-                 <div class="inventory-slot" data-itemid="health_potion_1"><img src="" alt=""></div>
-                 <div class="inventory-slot" data-itemid="keycard_alpha"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-                 <div class="inventory-slot"><img src="" alt=""></div>
-             </div>
-            <div class="item-info">
-                <div class="item-details">
-                    <h2 class="holo-text" id="itemInfoTitle">Analysis Grid</h2>
-                     <p class="holo-text" id="itemInfoDesc">Designate inventory object for detailed scan.</p>
-                </div>
-                <div class="item-actions">
-                     <button id="itemUseButton" class="holo-text" disabled>Interface</button> <!-- Renamed -->
-                     <button id="itemDropButton" class="holo-text" disabled>Jettison</button> <!-- Renamed -->
+      </div>
+      <div id="email" class="content-card">
+        <h1 class="holo-text">Comms Terminal</h1>
+         <div class="panel-content">
+            <ul id="emailList">
+                <!-- Email list items will be populated here by JS -->
+            </ul>
+            <div id="emailContent">
+                <!-- Selected email content will be shown here -->
+                 <div id="emailPlaceholder" class="holo-text">Select a message from the terminal list.</div>
+                 <h2 id="emailSubject" style="display: none;"></h2>
+                 <div id="emailMeta" style="display: none;">
+                     <span id="emailSender"></span>
+                     <span id="emailDate"></span>
                  </div>
+                 <div id="emailBody" style="display: none;"></div>
             </div>
+         </div>
+      </div>
+      <div id="codex" class="content-card">
+        <h1 class="holo-text">Data Codex</h1>
+        <div class="panel-content">
+           <p class="holo-text">No entries found. Connect to Archive Node.</p>
+           <!-- Codex content will go here -->
         </div>
+      </div>
+      <div id="scanner" class="content-card">
+        <h1 class="holo-text">Environmental Scanner</h1>
+         <div class="panel-content">
+            <p class="holo-text">Scanner inactive. Awaiting target lock.</p>
+            <!-- Scanner content will go here -->
+        </div>
+      </div>
+      <div id="vitals" class="content-card">
+        <h1 class="holo-text">Biometrics</h1>
+         <div class="panel-content">
+            <p class="holo-text">Telemetry offline. Check neural link.</p>
+            <!-- Vitals content will go here -->
+        </div>
+      </div>
     </div>
 
-        <script>
-        // ----- Global DOM Elements -----
-        // (Keep all element definitions as before)
-        const loginPanel = document.getElementById("loginPanel");
-        const loginButton = document.getElementById("loginButton");
-        const mainContent = document.getElementById("mainContent");
-        const navButtons = document.querySelectorAll("nav button[data-section]");
-        const contentCards = document.querySelectorAll("#contentWrapper .content-card");
-        const inventoryContainer = document.getElementById("inventoryContainer");
-        const inventoryGrid = document.querySelector(".inventory-grid");
-        let inventorySlots;
-        const itemInfoTitle = document.getElementById("itemInfoTitle");
-        const itemInfoDesc = document.getElementById("itemInfoDesc");
-        const itemUseButton = document.getElementById("itemUseButton");
-        const itemDropButton = document.getElementById("itemDropButton");
-        const emailList = document.getElementById("emailList");
-        const emailContent = document.getElementById("emailContent");
-        const emailPlaceholder = document.getElementById("emailPlaceholder");
-        const emailSubjectEl = document.getElementById("emailSubject");
-        const emailMetaEl = document.getElementById("emailMeta");
-        const emailSenderEl = document.getElementById("emailSender");
-        const emailDateEl = document.getElementById("emailDate");
-        const emailBodyEl = document.getElementById("emailBody");
-        let loadingStartTime = null; // Initialize as null
-        let selectedSlot = null;
+  <!-- ===== New Inventory Container (initially hidden) ===== -->
+  <div id="inventoryContainer">
+    <!-- Left side: inventory slots -->
+    <div class="inventory-grid">
+      <!-- Dynamic slots example (can be populated by JS later) -->
+      <div class="inventory-slot" data-itemid="health_potion_1"><img src="placeholder.png" alt="Item"></div>
+      <div class="inventory-slot" data-itemid="keycard_alpha"><img src="placeholder.png" alt="Item"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div>
+      <!-- Add more slots as needed -->
+    </div>
 
-        // ----- Dummy Data -----
-        // (Keep dummy data as before)
-        const inventoryItems = {
-            "health_potion_1": { name: "Medi-Gel Injector", description: "Automated injector containing concentrated regenerative nano-solution. Effective on moderate tissue trauma. Auto-disposes after use.", usable: true, img: "medi_gel.svg" },
-            "keycard_alpha": { name: "Access Credential: Sector Alpha", description: "Standard issue clearance chip embedded in polymer substrate. Grants level 1 access within designated Alpha Sector zones.", usable: false, img: "keycard.svg" },
-        };
-        const emails = [{ id: 1, sender: "SysCore AI", subject: ":: Corridor Sync Established ::", date: "Cycle 34.1 REV 8", body: "Unit Designate: VST-VYN [Vesta]\n\nConfirmed connection to the Animus Corridor Simulation construct.\nBio-Neural Interface: STABLE\nCore Systems: NOMINAL [Confidence: 99.8%]\n\nData Codex access granted. Safety protocols engaged.\nReport detected spatio-temporal anomalies via secure comms channel immediately.\n\n++ SysCore Operational Branch ++", read: false }, { id: 2, sender: "Supply Chain AI [QM-7 Designation]", subject: "Equipment Dispatch Confirmation", date: "Cycle 34.0 REV 5", body: "Recipient: V. Vyntarion (VST-VYN)\n\nStandard Issue Loadout dispatched to designated access point:\n- Integrated Sidearm Unit [Check Scanner Interface]\n- Medi-Gel Injector x2\n- Access Credential: Sector Alpha x1\n\nInventory verification requested upon retrieval.\n\n-- QM-7 Logistical Matrix --", read: false }, { id: 3, sender: "Automated Hazard Monitor", subject: "ALERT: Unstable Energy Signature - Sector Gamma", date: "Cycle 33.9 REV 12", body: "PRIORITY ALERT ::\n\nUnidentified high-energy resonance pattern detected.\nOrigin Point: Sector Gamma / Grid Reference 7G-Delta-9.\nMagnitude exceeds standard variance thresholds by 4 sigmas.\nPhenomenon signature inconsistent with known subspace events.\n\nACTION: Avoid designated zone. Hazard Containment Team en route.\n\nRECORD ID: AE-8873-G-HIGH", read: true }, { id: 4, sender: "Dr. Aris Thorne [Secured Channel]", subject: "Query Follow-up // Urgent Data Request", date: "Cycle 33.8 REV 2", body: "Vesta,\n\nThe chroniton field flux patterns you logged... they defy current models. My quantum simulations are producing paradoxical outcomes, pointing towards an external 'observer' effect or a causal loop. Cannot confirm without hard data.\n\nYour scanner array is key. Focus on *any* anomalous energy readings, particularly those exhibiting temporal shear or non-linear decay signatures. Log everything and transmit directly via this secured channel ONLY. Designate Priority Alpha.\n\nMaintain vigilance. This research is critical.\n\n// Aris //", read: false }, ];
+    <!-- Right side: item info panel -->
+    <div class="item-info">
+      <div class="item-details">
+        <h2 class="holo-text" id="itemInfoTitle">Item Information</h2>
+        <p class="holo-text" id="itemInfoDesc">Select an item from the grid.</p>
+      </div>
+      <div class="item-actions">
+        <button id="itemUseButton" class="holo-text" disabled>Use</button>
+        <button id="itemDropButton" class="holo-text" disabled>Drop</button>
+      </div>
+    </div>
+  </div>
 
-         // ----- Initial Setup -----
-         document.addEventListener('DOMContentLoaded', () => {
-             console.log("DOM fully loaded and parsed"); // Debug log
-             // Trigger login panel fade-in after a short delay
-             setTimeout(() => {
-                 if (loginPanel) {
-                     loginPanel.classList.add('visible');
-                     console.log("Login panel made visible"); // Debug log
-                 } else {
-                    console.error("Login panel not found on DOMContentLoaded!");
-                 }
-             }, 300);
+  <script>
+    // ----- Global DOM Elements -----
+    const loginPanel = document.getElementById("loginPanel");
+    const loginButton = document.getElementById("loginButton");
+    const mainContent = document.getElementById("mainContent");
+    const navButtons = document.querySelectorAll("nav button[data-section]");
+    const contentCards = document.querySelectorAll("#contentWrapper .content-card");
+    const inventoryContainer = document.getElementById("inventoryContainer");
+    const inventorySlots = document.querySelectorAll(".inventory-slot");
+    const itemInfoTitle = document.getElementById("itemInfoTitle");
+    const itemInfoDesc = document.getElementById("itemInfoDesc");
+    const itemUseButton = document.getElementById("itemUseButton");
+    const itemDropButton = document.getElementById("itemDropButton");
+    const emailList = document.getElementById("emailList");
+    const emailContent = document.getElementById("emailContent");
+    const emailPlaceholder = document.getElementById("emailPlaceholder");
+    const emailSubjectEl = document.getElementById("emailSubject");
+    const emailMetaEl = document.getElementById("emailMeta");
+    const emailSenderEl = document.getElementById("emailSender");
+    const emailDateEl = document.getElementById("emailDate");
+    const emailBodyEl = document.getElementById("emailBody");
 
-            // Setup functions - ensure they don't rely on things not yet visible
-            try {
-                setupInventoryPlaceholders();
-                addInventoryEventListeners();
-                console.log("Inventory setup complete"); // Debug log
-            } catch(e) {
-                console.error("Error during initial inventory setup:", e);
+    let loadingStartTime; // For Three.js timing
+
+    // ----- Dummy Data -----
+    const inventoryItems = { // Simple item data store
+        "health_potion_1": { name: "Medi-Gel (Basic)", description: "Standard issue regenerative gel. Seals minor wounds and provides temporary pain relief. Single use.", usable: true },
+        "keycard_alpha": { name: "Access Key: Sector Alpha", description: "Standard personnel keycard. Grants access to Alpha Sector maintenance hatches and common areas.", usable: false },
+        // Add more items here referenced by data-itemid in HTML
+    };
+
+    const emails = [
+        { id: 1, sender: "System Operations", subject: "Welcome to the Animus Corridor", date: "Cycle 34.1", body: "Unit VST-VYN,\n\nYour connection to the Animus Corridor Simulation is confirmed. All core systems nominal.\n\nRemember to consult the Data Codex for operational procedures and review safety protocols.\n\nReport any anomalies immediately via the designated channel.\n\n- SysOps Command", read: false },
+        { id: 2, sender: "Quartermaster Unit 7", subject: "Inventory Manifest Update", date: "Cycle 34.0", body: "Attn: V. Vyntarion,\n\nYour starting equipment has been dispatched:\n- Standard Issue Sidearm (Check Scanner Slot)\n- Medi-Gel (Basic) x2\n- Access Key: Sector Alpha\n\nConfirm receipt.\n\n- QM-7", read: false },
+        { id: 3, sender: "WARNING - Automated Alert", subject: "Energy Fluctuation Detected - Sector Gamma", date: "Cycle 33.9", body: "ALERT: Unidentified energy signature detected originating from Sector Gamma, Grid 7G-Delta.\n\nMagnitude exceeds standard operational parameters.\n\nProceed with caution. Avoid area until cleared by Hazard Containment.\n\nRECORD ID: AE-8873-G", read: true },
+         { id: 4, sender: "Dr. Aris Thorne", subject: "Re: Research Query", date: "Cycle 33.8", body: "Vesta,\n\nRegarding your query on the chroniton field distortions - the patterns are inconsistent with known phenomena. My simulations suggest an external influence, but I lack sufficient data.\n\nKeep your scanner active. Any unusual energy readings, especially temporal signatures, forward them to me directly. This is priority Alpha.\n\nStay safe,\nAris", read: false },
+    ];
+
+    // ----- Login Handling -----
+    loginButton.addEventListener("click", function() {
+      const username = document.getElementById("username").value.trim();
+      const passcode = document.getElementById("passcode").value.trim();
+      if (username && passcode) {
+        // 1. Start hiding login panel
+        loginPanel.classList.add("hidden");
+
+        // 2. After login panel fades out, remove it and show main content
+        loginPanel.addEventListener('transitionend', () => {
+            loginPanel.style.display = "none"; // Fully remove after fade
+            // Show main content container (triggers its fade-in via CSS)
+            mainContent.classList.add("visible");
+             // Start the Three.js background only AFTER the UI is ready
+            loadingStartTime = Date.now() * 0.001;
+            initThreeJS(); // Renamed init to initThreeJS
+            animateThreeJS(); // Renamed animate to animateThreeJS
+
+        }, { once: true }); // Ensure this listener runs only once
+
+      } else {
+        alert("Access denied. Credentials required.");
+      }
+    });
+
+    // ----- Navigation & Panel Switching Logic -----
+    navButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const section = btn.getAttribute("data-section");
+
+        // Deactivate all buttons and panels first
+        navButtons.forEach(b => b.classList.remove("active"));
+        contentCards.forEach(card => card.classList.remove("active"));
+        inventoryContainer.classList.remove("active"); // Hide inventory too
+
+        // Activate the clicked button
+        btn.classList.add("active");
+
+        // Show the correct panel
+        if (section === "inventory") {
+          inventoryContainer.classList.add("active");
+        } else {
+          const targetCard = document.getElementById(section);
+          if (targetCard) {
+            targetCard.classList.add("active");
+            // If email section, populate the list
+            if (section === "email") {
+                populateEmailList();
+                resetEmailContent(); // Show placeholder initially
             }
+          }
+        }
+      });
+    });
 
-            // Pre-populate email list structure but keep panel hidden
-            // This ensures the elements exist if email is opened later
-            try {
-                if (document.getElementById('email')) { // Check if email panel exists
-                     populateEmailList(); // Populate the list structure
-                     resetEmailContent(); // Ensure content area is reset
-                     console.log("Email list pre-populated"); // Debug log
-                }
-            } catch(e) {
-                console.error("Error during initial email setup:", e);
-            }
-         });
+    // ----- Inventory Interaction Logic -----
+    let selectedSlot = null; // Track the currently selected inventory slot
 
-
-         // ----- Login Handling -----
-        loginButton.addEventListener("click", function() {
-            console.log("Login button clicked"); // Debug log
-            const usernameInput = document.getElementById("username");
-            const passcodeInut = document.getElementById("passcode");
-            const username = usernameInput ? usernameInput.value.trim() : "";
-            const passcode = passcodeInut ? passcodeInut.value.trim() : "";
-
-            if (username && passcode) {
-                console.log("Credentials valid, proceeding..."); // Debug log
-                if (loginPanel) {
-                    loginPanel.classList.add("hidden");
-                     // Hide completely after transition
-                     loginPanel.addEventListener('transitionend', () => {
-                         loginPanel.style.display = "none";
-                         console.log("Login panel transition ended and hidden"); // Debug log
-                     }, { once: true });
-                } else {
-                     console.warn("Login panel not found when trying to hide.");
-                }
-
-                // <<< Make mainContent visible >>>
-                if (mainContent) {
-                     mainContent.classList.add("visible");
-                     console.log("mainContent class 'visible' added"); // Debug log
-                 } else {
-                    console.error("FATAL: Main content container not found! UI cannot proceed.");
-                    return; // Stop if main content is missing
-                 }
-
-                // Start background animation timing only AFTER mainContent is made visible
-                loadingStartTime = Date.now() * 0.001;
-                console.log("loadingStartTime set:", loadingStartTime); // Debug log
-
-                if (typeof THREE !== 'undefined') {
-                    console.log("Three.js library detected. Initializing scene...");
-                    // Wrap Three.js init/animate in a timeout to ensure DOM updates from
-                    // adding '.visible' have a chance to process before heavy JS starts.
-                    setTimeout(() => {
-                        try {
-                             initThreeJS(); // Contains its own try/catch
-                             animateThreeJS(); // Contains its own try/catch/checks
-                             console.log("Three.js initialization and animation loop started.");
-                        } catch (e) {
-                             console.error("Error during Three.js delayed setup:", e);
-                             alert("A critical error occurred while initializing the 3D background.");
-                        }
-                    }, 50); // Small delay (50ms)
-
-                } else {
-                    console.error("Three.js library failed to load.");
-                    alert("Error: Background visualization library failed to load.")
-                }
-            } else {
-                alert("Access denied. Valid credentials required.");
-                console.log("Login denied: Invalid credentials."); // Debug log
-            }
-        });
-
-        // ----- Navigation & Panel Switching Logic -----
-        // (Keep this section exactly as in the previous correct version)
-        navButtons.forEach(btn => {
-            btn.addEventListener("click", () => {
-                // ... (previous logic for handling nav clicks, activating/deactivating panels) ...
-                // Add console logs here if needed for debugging nav interaction
-                const section = btn.getAttribute("data-section");
-                 console.log(`Nav button clicked for section: ${section}`);
-
-                let currentlyActive = document.querySelector('.content-card.active, #inventoryContainer.active');
-                let buttonActive = document.querySelector('nav button.active');
-
-                if (buttonActive === btn && currentlyActive) {
-                    console.log(`Closing active section: ${section}`);
-                    currentlyActive.classList.remove('active');
-                    btn.classList.remove('active');
-                    resetItemInfo();
-                    resetEmailContent();
-                    if (selectedSlot) selectedSlot.classList.remove('selected');
-                    selectedSlot = null;
-                    return;
-                }
-
-                navButtons.forEach(b => b.classList.remove("active"));
-                contentCards.forEach(card => card.classList.remove("active"));
-                if (inventoryContainer) inventoryContainer.classList.remove("active");
-
-                btn.classList.add("active");
-                console.log(`Activating section: ${section}`);
-
-                resetItemInfo();
-                resetEmailContent();
-                if (selectedSlot) {
-                    selectedSlot.classList.remove('selected');
-                    selectedSlot = null;
-                }
-
-                if (section === "inventory") {
-                    if (inventoryContainer) {
-                        inventoryContainer.classList.add("active");
-                    } else {
-                        console.error("Inventory container not found!");
-                    }
-                } else {
-                    const targetCard = document.getElementById(section);
-                    if (targetCard) {
-                        targetCard.classList.add("active");
-                        if (section === "email") {
-                            // Email list is pre-populated, just ensure content is reset
-                            resetEmailContent(); // Ensure placeholder shows first
-                        }
-                    } else {
-                        console.error(`Content card with ID "${section}" not found!`);
-                    }
-                }
-            });
-        });
-
-
-         // ----- Inventory Interaction Logic -----
-         // (Keep setupInventoryPlaceholders, addInventoryEventListeners, handleInventorySlotClick,
-         // handleItemUse, handleItemDrop, removeItemFromSlot, resetItemInfo functions exactly
-         // as in the previous correct version with their checks)
-         function setupInventoryPlaceholders() {
-             if (!inventoryGrid) return;
-             inventorySlots = inventoryGrid.querySelectorAll(".inventory-slot"); // Get slots here
-             console.log(`Found ${inventorySlots.length} inventory slots to process.`); // Debug log
-             inventorySlots.forEach(slot => {
-                 const img = slot.querySelector('img');
-                 if (!img) return;
-
-                 const itemId = slot.getAttribute('data-itemid');
-                 let itemImageSrc = '';
-
-                 if (itemId && inventoryItems[itemId] && inventoryItems[itemId].img) {
-                     itemImageSrc = inventoryItems[itemId].img;
-                     img.alt = inventoryItems[itemId].name;
-                     // Attempt to set src - will use placeholder if path invalid
-                     img.src = itemImageSrc;
-                     img.onerror = () => { // Add onerror to use placeholder if image fails
-                        console.warn(`Failed to load image: ${itemImageSrc}. Using placeholder.`);
-                        setPlaceholderSvg(img);
-                     };
-                     // Check if src is valid immediately (might not catch all errors)
-                     if (!img.complete || img.naturalWidth === 0) {
-                        // Might indicate an issue even before onerror fires
-                        // Set placeholder proactively if src looks bad initially
-                        // (This check is unreliable across browsers, onerror is better)
-                     }
-                      img.style.opacity = "1";
-                 } else {
-                     setPlaceholderSvg(img); // Use helper function
-                 }
-             });
-             // Re-assign inventorySlots after potential modifications (though not needed here)
-             inventorySlots = inventoryGrid.querySelectorAll(".inventory-slot");
-         }
-
-         function setPlaceholderSvg(imgElement) {
-             if (!imgElement) return;
-             const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 100 100"><rect width="100" height="100" fill="rgba(0,204,255,0.02)"/><circle cx="50" cy="50" r="35" fill="none" stroke="rgba(0,204,255,0.2)" stroke-width="3" stroke-dasharray="10 5"/><line x1="30" y1="50" x2="70" y2="50" stroke="rgba(0,204,255,0.15)" stroke-width="3"/><line x1="50" y1="30" x2="50" y2="70" stroke="rgba(0,204,255,0.15)" stroke-width="3"/></svg>`;
-             imgElement.src = `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
-             imgElement.style.opacity = "0.4";
-             imgElement.alt = "Empty Slot";
-             imgElement.onerror = null; // Remove error handler for the placeholder itself
-         }
-
-        function addInventoryEventListeners() {
-            // Use the globally defined inventorySlots
-            if (!inventorySlots || inventorySlots.length === 0) {
-                console.warn("Inventory slots not found or empty when adding listeners.");
-                // Attempt setup again just in case it failed initially
-                setupInventoryPlaceholders();
-                if (!inventorySlots || inventorySlots.length === 0) {
-                     console.error("FATAL: Cannot add inventory listeners, slots not found.");
-                     return;
-                }
-            }
-            console.log(`Adding listeners to ${inventorySlots.length} slots.`); // Debug log
-             inventorySlots.forEach(slot => {
-                 slot.addEventListener("click", () => {
-                     handleInventorySlotClick(slot);
-                 });
-             });
-             if (itemUseButton) itemUseButton.addEventListener("click", handleItemUse);
-             if (itemDropButton) itemDropButton.addEventListener("click", handleItemDrop);
-         }
-
-         function handleInventorySlotClick(slot) {
-            if (!slot) return;
-            console.log("Inventory slot clicked:", slot.getAttribute("data-itemid") || "Empty"); // Debug log
+    inventorySlots.forEach(slot => {
+        slot.addEventListener("click", () => {
             const itemId = slot.getAttribute("data-itemid");
-            if (selectedSlot && selectedSlot !== slot) {
+
+            // Deselect previous slot
+            if (selectedSlot) {
                 selectedSlot.classList.remove("selected");
             }
-            resetItemInfo(false);
+
             if (itemId && inventoryItems[itemId]) {
                 const item = inventoryItems[itemId];
-                if (itemInfoTitle) itemInfoTitle.textContent = item.name;
-                if (itemInfoDesc) itemInfoDesc.textContent = item.description;
-                if (itemUseButton) itemUseButton.disabled = !item.usable;
-                if (itemDropButton) itemDropButton.disabled = false;
-                slot.classList.add("selected");
-                selectedSlot = slot;
+                itemInfoTitle.textContent = item.name;
+                itemInfoDesc.textContent = item.description;
+                itemUseButton.disabled = !item.usable; // Enable 'Use' if usable
+                itemDropButton.disabled = false; // Enable 'Drop'
+                slot.classList.add("selected"); // Highlight selected slot
+                selectedSlot = slot; // Update selected slot tracker
             } else {
-                if (itemInfoTitle) itemInfoTitle.textContent = "Empty Slot Designation";
-                if (itemInfoDesc) itemInfoDesc.textContent = "No object detected...";
-                if (itemUseButton) itemUseButton.disabled = true;
-                if (itemDropButton) itemDropButton.disabled = true;
-                slot.classList.add("selected");
+                // Empty slot selected
+                itemInfoTitle.textContent = "Empty Slot";
+                itemInfoDesc.textContent = "This inventory slot is empty.";
+                itemUseButton.disabled = true;
+                itemDropButton.disabled = true;
+                slot.classList.add("selected"); // Still visually select the empty slot
                 selectedSlot = slot;
             }
-         }
+        });
 
-         function handleItemUse() {
-             if (selectedSlot && itemUseButton && !itemUseButton.disabled) {
-                 const itemId = selectedSlot.getAttribute("data-itemid");
-                 if (itemId && inventoryItems[itemId]) {
-                    console.log(`Using item: ${inventoryItems[itemId].name}`); // Debug log
-                    alert(`Interfaced with ${inventoryItems[itemId].name}.`);
-                    // removeItemFromSlot(selectedSlot); // Example: if consumable
-                }
-            }
-         }
+        // Add placeholder images if src is "placeholder.png"
+        const img = slot.querySelector('img');
+        if (img && img.src.includes('placeholder.png')) {
+            // Generate a simple SVG placeholder
+            const placeholderSvg = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100">
+                    <rect width="100" height="100" fill="rgba(0,204,255,0.05)"/>
+                    <line x1="20" y1="20" x2="80" y2="80" stroke="rgba(0,204,255,0.2)" stroke-width="5"/>
+                    <line x1="80" y1="20" x2="20" y2="80" stroke="rgba(0,204,255,0.2)" stroke-width="5"/>
+                     <circle cx="50" cy="50" r="30" fill="none" stroke="rgba(0,204,255,0.3)" stroke-width="5"/>
+                </svg>`;
+            img.src = `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
+            img.style.opacity = "0.5"; // Make placeholder less prominent
+        }
+    });
 
-         function handleItemDrop() {
-             if (selectedSlot && itemDropButton && !itemDropButton.disabled) {
-                const itemId = selectedSlot.getAttribute("data-itemid");
-                 const itemName = (itemId && inventoryItems[itemId]) ? inventoryItems[itemId].name : "the empty slot data";
-                 if (confirm(`Confirm jettison command for: ${itemName}?`)) {
-                     console.log(`Dropping item: ${itemName}`); // Debug log
-                     alert(`Jettisoned ${itemName}.`);
-                    if (itemId) {
-                         removeItemFromSlot(selectedSlot);
-                     } else {
-                         selectedSlot.classList.remove('selected');
-                         resetItemInfo();
-                         selectedSlot = null;
-                     }
-                }
-            }
-         }
+    // Add basic functionality to inventory buttons (can be expanded)
+    itemUseButton.addEventListener("click", () => {
+        if (selectedSlot && !itemUseButton.disabled) {
+            const itemId = selectedSlot.getAttribute("data-itemid");
+            alert(`Used ${inventoryItems[itemId].name}!`);
+            // Add actual use logic here (e.g., remove item, apply effect)
+        }
+    });
 
-        function removeItemFromSlot(slot) {
-            if (!slot) return;
-            console.log("Removing item from slot"); // Debug log
-            slot.removeAttribute("data-itemid");
-            const img = slot.querySelector('img');
-            if (img) {
-                setPlaceholderSvg(img); // Use helper
-            }
-            slot.classList.remove('selected');
-            resetItemInfo();
-            selectedSlot = null;
-         }
-
-        function resetItemInfo(showPlaceholderText = true) {
-             // console.log("Resetting item info panel"); // Debug log (can be noisy)
-            if(showPlaceholderText) {
-                 if (itemInfoTitle) itemInfoTitle.textContent = "Analysis Grid";
-                 if (itemInfoDesc) itemInfoDesc.textContent = "Designate inventory object...";
-            }
-             if (itemUseButton) itemUseButton.disabled = true;
-             if (itemDropButton) itemDropButton.disabled = true;
-         }
-
-        // ----- Email Section Logic -----
-        // (Keep populateEmailList, displayEmailContent, resetEmailContent functions exactly
-        // as in the previous correct version with their checks)
-        function populateEmailList() {
-            if (!emailList) { console.error("Email list element not found for population."); return; }
-            emailList.innerHTML = '';
-            // Create a document fragment for efficiency
-            const fragment = document.createDocumentFragment();
-            emails
-                .sort((a, b) => b.id - a.id)
-                .forEach(email => {
-                    const li = document.createElement('li');
-                    li.setAttribute('data-email-id', email.id);
-                    li.classList.toggle('read', email.read);
-                    li.classList.toggle('unread', !email.read);
-
-                    const senderSpan = document.createElement('span');
-                    senderSpan.className = 'sender holo-text';
-                    senderSpan.textContent = email.sender;
-
-                    const subjectSpan = document.createElement('span');
-                    subjectSpan.className = 'subject holo-text';
-                    subjectSpan.textContent = email.subject;
-
-                    li.appendChild(senderSpan);
-                    li.appendChild(subjectSpan);
-
-                    li.addEventListener('click', () => {
-                        emailList.querySelectorAll('li.active').forEach(item => item.classList.remove('active'));
-                        li.classList.add('active');
-                        displayEmailContent(email.id);
-                    });
-                    fragment.appendChild(li); // Add to fragment
-             });
-             emailList.appendChild(fragment); // Append fragment once
-             console.log("Email list populated"); // Debug log
-         }
-
-         function displayEmailContent(emailId) {
-             console.log(`Displaying email ID: ${emailId}`); // Debug log
-             const email = emails.find(e => e.id === emailId);
-             if (email) {
-                 if (emailPlaceholder) emailPlaceholder.style.display = 'none';
-                 if (emailSubjectEl) { emailSubjectEl.style.display = 'block'; emailSubjectEl.textContent = email.subject; }
-                 if (emailMetaEl) emailMetaEl.style.display = 'block';
-                 if (emailSenderEl) emailSenderEl.textContent = `Origin Signal: ${email.sender}`;
-                 if (emailDateEl) emailDateEl.textContent = `Timestamp: ${email.date}`;
-                 if (emailBodyEl) { emailBodyEl.style.display = 'block'; emailBodyEl.textContent = email.body; }
-
-                if (!email.read) {
-                     email.read = true;
-                     const listItem = emailList ? emailList.querySelector(`li[data-email-id="${emailId}"]`) : null;
-                     if (listItem) {
-                         listItem.classList.remove('unread');
-                         listItem.classList.add('read');
-                     }
+     itemDropButton.addEventListener("click", () => {
+        if (selectedSlot && !itemDropButton.disabled) {
+            const itemId = selectedSlot.getAttribute("data-itemid");
+            const itemName = itemId ? inventoryItems[itemId].name : "Empty Slot";
+             if (confirm(`Are you sure you want to drop ${itemName}?`)) {
+                alert(`Dropped ${itemName}.`);
+                 // Add actual drop logic here (e.g., remove item from slot)
+                 if (itemId) {
+                     selectedSlot.removeAttribute("data-itemid");
+                      const img = selectedSlot.querySelector('img');
+                      if(img) { // Replace image with placeholder
+                        const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100"><rect width="100" height="100" fill="rgba(0,204,255,0.05)"/><line x1="20" y1="20" x2="80" y2="80" stroke="rgba(0,204,255,0.2)" stroke-width="5"/><line x1="80" y1="20" x2="20" y2="80" stroke="rgba(0,204,255,0.2)" stroke-width="5"/><circle cx="50" cy="50" r="30" fill="none" stroke="rgba(0,204,255,0.3)" stroke-width="5"/></svg>`;
+                        img.src = `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
+                        img.style.opacity = "0.5";
+                      }
+                     // Reset info panel
+                     itemInfoTitle.textContent = "Empty Slot";
+                     itemInfoDesc.textContent = "This inventory slot is empty.";
+                     itemUseButton.disabled = true;
+                     itemDropButton.disabled = true;
+                     selectedSlot.classList.remove("selected");
+                     selectedSlot = null;
                  }
-                 if (emailContent) { emailContent.scrollTop = 0; }
-            } else {
-                console.warn(`Email with ID ${emailId} not found.`);
-                resetEmailContent();
-            }
-         }
-
-         function resetEmailContent() {
-             // console.log("Resetting email content area"); // Debug log (can be noisy)
-             if (emailPlaceholder) emailPlaceholder.style.display = 'block';
-             if (emailSubjectEl) emailSubjectEl.style.display = 'none';
-             if (emailMetaEl) emailMetaEl.style.display = 'none';
-             if (emailBodyEl) emailBodyEl.style.display = 'none';
-            if (emailList) {
-                emailList.querySelectorAll('li.active').forEach(item => item.classList.remove('active'));
-            }
-         }
-
-        // ----- Ripple Effect on Click -----
-        // (Keep this function exactly as before)
-         document.addEventListener("click", function (e) {
-            if (e.target.closest('button, .inventory-slot, #emailList li, input, .content-card.active, #inventoryContainer.active')) {
-                return;
-            }
-             // console.log("Creating background ripple effect"); // Debug log (can be noisy)
-             const ripple = document.createElement("div");
-            ripple.classList.add("ripple");
-            const size = Math.min(window.innerWidth, window.innerHeight) * 0.5;
-             ripple.style.width = ripple.style.height = size + "px";
-             ripple.style.left = e.clientX - size / 2 + "px";
-             ripple.style.top = e.clientY - size / 2 + "px";
-            document.body.appendChild(ripple);
-            ripple.addEventListener("animationend", () => {
-                if (ripple.parentNode) {
-                    ripple.remove();
-                }
-            }, { once: true });
-         });
-
-
-         // ----- Three.js Scene & Animation Code -----
-        // (Define scene variables as before)
-        let scene, camera, renderer;
-        let corridor;
-        let ceilingMesh, leftWallMesh, rightWallMesh;
-        let glyphs = [];
-        let globalGlyphFade = 0;
-        const CORRIDOR_SIZE = 2500;
-        let mouse = new THREE.Vector2(0, 0);
-        let targetRotationX = 0, targetRotationY = 0;
-        let floorTexture, ceilingTexture, leftWallTexture, rightWallTexture;
-        const SCROLL_SPEED_FLOOR = 0.0007;
-        const SCROLL_SPEED_CODE = 0.0005;
-        let plexusGroup;
-        const repulsionDistance = 130;
-        const repulsionForce = 1.8;
-        const friction = 0.92;
-        let animationFrameId = null; // To potentially stop the loop
-
-        function initThreeJS() {
-             console.log("initThreeJS started"); // Debug log
-             try {
-                scene = new THREE.Scene();
-                scene.background = new THREE.Color(0x0d1b2a);
-                scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0007);
-
-                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
-                camera.position.set(0, 0, 1800);
-                camera.lookAt(0, 0, 0);
-
-                renderer = new THREE.WebGLRenderer({ antialias: true });
-                renderer.setPixelRatio(window.devicePixelRatio);
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                // Ensure canvas is added only once
-                const existingCanvas = document.body.querySelector('canvas');
-                if (existingCanvas) existingCanvas.remove();
-                document.body.insertBefore(renderer.domElement, document.body.firstChild);
-
-                // --- Lights ---
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
-                scene.add(ambientLight);
-                const directionalLight = new THREE.DirectionalLight(0xADD8E6, 0.35);
-                directionalLight.position.set(1, 1.5, 1).normalize();
-                scene.add(directionalLight);
-
-                // --- Corridor ---
-                corridor = new THREE.Group();
-                scene.add(corridor);
-
-                // --- Textures (with checks) ---
-                leftWallTexture = createCodeTexture(512);
-                 if(leftWallTexture) { leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping; leftWallTexture.repeat.set(4, 5); }
-                rightWallTexture = createCodeTexture(512);
-                 if(rightWallTexture) { rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping; rightWallTexture.repeat.set(4, 5); }
-                floorTexture = createCodeTexture(512);
-                 if(floorTexture) { floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; floorTexture.repeat.set(4, 10); }
-                ceilingTexture = createCircuitTexture(512);
-                 if(ceilingTexture) { ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping; ceilingTexture.repeat.set(3, 3); }
-                 console.log("Textures created (or attempted)"); // Debug log
-
-                 // --- Materials (with checks for textures) ---
-                const wallMat = new THREE.MeshPhongMaterial({ map: leftWallTexture || null, side: THREE.DoubleSide, transparent: true, opacity: 0.65, specular: 0x111111, shininess: 10 });
-                 const floorMat = new THREE.MeshPhongMaterial({ map: floorTexture || null, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-                 const ceilingMat = new THREE.MeshPhongMaterial({ map: ceilingTexture || null, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-
-                // --- Geometry ---
-                const planeGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
-
-                // --- Meshes ---
-                ceilingMesh = new THREE.Mesh(planeGeo.clone(), ceilingMat); // Clone geo
-                ceilingMesh.rotation.x = Math.PI / 2;
-                ceilingMesh.position.y = CORRIDOR_SIZE / 2;
-                corridor.add(ceilingMesh);
-
-                leftWallMesh = new THREE.Mesh(planeGeo.clone(), wallMat.clone());
-                if(leftWallMesh.material) leftWallMesh.material.map = leftWallTexture || null; // Assign map
-                leftWallMesh.rotation.y = Math.PI / 2;
-                leftWallMesh.position.x = -CORRIDOR_SIZE / 2 - 500;
-                corridor.add(leftWallMesh);
-
-                rightWallMesh = new THREE.Mesh(planeGeo.clone(), wallMat.clone());
-                if(rightWallMesh.material) rightWallMesh.material.map = rightWallTexture || null;
-                rightWallMesh.rotation.y = -Math.PI / 2;
-                rightWallMesh.position.x = CORRIDOR_SIZE / 2 + 500;
-                corridor.add(rightWallMesh);
-                console.log("Corridor meshes added"); // Debug log
-
-                // --- Plexus ---
-                 plexusGroup = createScrollingPlexus(); // Has own try/catch
-                 if (plexusGroup) {
-                    plexusGroup.rotation.x = -0.2;
-                     plexusGroup.scale.set(0, 0, 0);
-                     plexusGroup.renderOrder = 1;
-                    scene.add(plexusGroup);
-                    console.log("Plexus group added"); // Debug log
-                 } else {
-                     console.error("Plexus group creation failed, not added to scene.");
-                 }
-
-                 // --- Glyphs ---
-                const glyphLetters = ["⍀", "⍁", "⍂", "⍃", "⍄", "⍅", "⍆", "⍇", "⍈", "⍉", "⌿", "⍀", "⎍", "⏚", "⌘", "⌥", "⌶"];
-                 glyphs = [];
-                for (let i = 0; i < 40; i++) {
-                     const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
-                     const sprite = createGlyphSprite(letter); // Has own try/catch
-                     if (!sprite) continue;
-                     // ... (positioning logic as before) ...
-                     const radius = 800 + Math.random() * 1000;
-                     const angle = Math.random() * Math.PI * 2;
-                     const height = Math.random() * 1950 - 700;
-                     const depth = -Math.random() * (CORRIDOR_SIZE * 0.8);
-                     sprite.position.set(Math.cos(angle) * radius, height, depth);
-                    sprite.userData = { /* ... data ... */
-                         basePosition: sprite.position.clone(),
-                         oscillationSpeed: Math.random() * 0.4 + 0.3,
-                         velocity: new THREE.Vector3(0, 0, 0),
-                         lifetime: Math.random() * 15,
-                         maxLifetime: 15 + Math.random() * 10
-                    };
-                     glyphs.push(sprite);
-                     scene.add(sprite);
-                 }
-                 console.log(`Glyphs created: ${glyphs.length}`); // Debug log
-
-                 // --- Event Listeners ---
-                 window.addEventListener("resize", onWindowResize, false);
-                 document.addEventListener("mousemove", onDocumentMouseMove, false);
-
-                 console.log("Three.js scene initialization successful.");
-
-             } catch (error) {
-                 console.error("CRITICAL Error during Three.js initialization:", error);
-                 alert("Failed to initialize 3D background. Check console for errors.");
-                 // Stop animation if init fails completely
-                 if (animationFrameId) cancelAnimationFrame(animationFrameId);
-                 renderer = null; // Flag failure
-             }
-         }
-
-
-         function animateThreeJS() {
-            // **Crucial Check:** Ensure init has run and renderer/scene/camera exist
-            if (!renderer || !scene || !camera) {
-                console.warn("animateThreeJS called before initialization or after failure. Stopping loop.");
-                if (animationFrameId) cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-                return;
-             }
-            // **Crucial Check:** Ensure loadingStartTime is a valid number
-            if (loadingStartTime === null || typeof loadingStartTime !== 'number' || isNaN(loadingStartTime)) {
-                console.warn("animateThreeJS called before loadingStartTime is set. Delaying first frame.");
-                // Request next frame but don't run logic yet
-                 animationFrameId = requestAnimationFrame(animateThreeJS);
-                return;
-            }
-
-            // Schedule next frame immediately
-             animationFrameId = requestAnimationFrame(animateThreeJS);
-
-            // --- Start of Frame Logic ---
-            try { // Wrap the entire frame logic in a try...catch
-                const time = Date.now() * 0.001;
-                const elapsedTime = time - loadingStartTime;
-
-                // **Crucial Check:** Ensure elapsedTime is valid
-                if (isNaN(elapsedTime) || elapsedTime < 0) {
-                    console.warn(`Invalid elapsedTime (${elapsedTime}). Skipping frame.`);
-                    return; // Skip this frame's logic
-                }
-
-                // --- Animations Based on Elapsed Time ---
-
-                // Global glyph fade-in (check glyphs exists)
-                 if(glyphs && glyphs.length > 0) {
-                    const glyphStartDelay = 0.5;
-                    const glyphFadeDuration = 2.0;
-                     globalGlyphFade = (elapsedTime < glyphStartDelay) ? 0 : Math.min((elapsedTime - glyphStartDelay) / glyphFadeDuration, 0.7);
-                 } else {
-                    globalGlyphFade = 0;
-                 }
-
-                 // Corridor rotation (check corridor exists)
-                if (corridor) {
-                     corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.04;
-                     corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.04;
-                }
-
-                 // Animate walls sliding in (check meshes exist)
-                if (leftWallMesh?.position && rightWallMesh?.position) { // Optional chaining
-                     const wallAnimDuration = 2.5;
-                     const wallStartDelay = 0.4;
-                     if (elapsedTime >= wallStartDelay && elapsedTime < wallStartDelay + wallAnimDuration) {
-                        const progress = (elapsedTime - wallStartDelay) / wallAnimDuration;
-                        const easeProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
-                        leftWallMesh.position.x = THREE.MathUtils.lerp(-CORRIDOR_SIZE / 2 - 500, -CORRIDOR_SIZE / 2, easeProgress);
-                        rightWallMesh.position.x = THREE.MathUtils.lerp(CORRIDOR_SIZE / 2 + 500, CORRIDOR_SIZE / 2, easeProgress);
-                     } else if (elapsedTime >= wallStartDelay + wallAnimDuration) {
-                         // Ensure final position
-                         leftWallMesh.position.x = -CORRIDOR_SIZE / 2;
-                         rightWallMesh.position.x = CORRIDOR_SIZE / 2;
-                     }
-                }
-
-                // Texture scrolling (check texture & offset exist)
-                 if(floorTexture?.offset) floorTexture.offset.y += SCROLL_SPEED_FLOOR;
-                 if(leftWallTexture?.offset) leftWallTexture.offset.y += SCROLL_SPEED_CODE;
-                 if(rightWallTexture?.offset) rightWallTexture.offset.y += SCROWILL_SPEED_CODE;
-                 if(ceilingTexture?.offset) ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.5;
-
-
-                 // Animate plexus appearance (check group & scale exist)
-                if(plexusGroup?.scale) {
-                     const plexusStartDelay = 3.0;
-                     const plexusAnimDuration = 1.8;
-                     if (elapsedTime < plexusStartDelay) {
-                        plexusGroup.scale.set(0, 0, 0);
-                     } else if (elapsedTime < plexusStartDelay + plexusAnimDuration) {
-                         const s = (elapsedTime - plexusStartDelay) / plexusAnimDuration;
-                         const easeS = 1 - Math.pow(1 - s, 3);
-                         plexusGroup.scale.set(easeS, easeS, easeS);
-                     } else {
-                         plexusGroup.scale.set(1, 1, 1);
-                     }
-                }
-
-
-                // Update dynamic elements (with checks)
-                 if (plexusGroup?.children?.[0] && plexusGroup?.scale?.x > 0.01) {
-                     updateScrollingPlexus(plexusGroup.children[0], time); // Has internal checks
-                 }
-                 if (glyphs && glyphs.length > 0) {
-                     updateGlyphs(time); // Has internal checks
-                 }
-
-                // Render scene
-                renderer.render(scene, camera);
-
-            } catch (error) {
-                console.error("Error within animateThreeJS loop:", error);
-                // Optionally stop the loop if errors persist
-                if (animationFrameId) cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-                alert("An error occurred during background animation. Check console.");
-            }
-         }
-
-         // --- Helper functions for Three.js ---
-         // (Keep createScrollingPlexus, updateScrollingPlexus, createCodeTexture,
-         // createCircuitTexture, createGlyphSprite, updateGlyphs, spawnGlyphOnWall,
-         // onWindowResize, onDocumentMouseMove functions exactly as before,
-         // ensuring they include their internal try/catch blocks and null checks)
-
-        // Example: Ensure createCodeTexture has its check
-        function createCodeTexture(size) {
-            const canvas = document.createElement("canvas");
-            canvas.width = size; canvas.height = size;
-            const ctx = canvas.getContext("2d");
-            if (!ctx) { console.error("Failed to get 2D context for code texture"); return null; }
-            // ... rest of the drawing logic ...
-            try { // Wrap texture creation
-                 return new THREE.CanvasTexture(canvas);
-            } catch (e) {
-                console.error("Error creating CanvasTexture for code:", e);
-                return null;
             }
         }
-        // Apply similar try/catch to other texture/sprite creation helpers if not already present
+    });
 
 
-         // (Ensure all other helper functions like createCircuitTexture, createGlyphSprite,
-         //  updateScrollingPlexus, updateGlyphs, etc., also have robust internal checks
-         //  and try/catch blocks as added in the previous version)
-         // ... [Rest of Three.js helper functions as provided previously] ...
-          function createScrollingPlexus() { /* ... with try/catch ... */ return plexusGroup || null; }
-          function updateScrollingPlexus(plexusLines, time) { /* ... with checks ... */ }
-          function createCircuitTexture(size) { /* ... with checks and try/catch ... */ return texture || null; }
-          function createGlyphSprite(letter) { /* ... with checks and try/catch ... */ return sprite || null; }
-          function updateGlyphs(time) { /* ... with checks and try/catch ... */ }
-          function spawnGlyphOnWall(sprite) { /* ... with checks ... */ }
-          function onWindowResize() { /* ... with checks ... */ }
-          function onDocumentMouseMove(event) { /* ... with checks ... */ }
+    // ----- Email Section Logic -----
+    function populateEmailList() {
+        emailList.innerHTML = ''; // Clear previous list
+        emails.sort((a, b) => b.id - a.id); // Sort newest first (optional)
 
-     </script>
+        emails.forEach(email => {
+            const li = document.createElement('li');
+            li.setAttribute('data-email-id', email.id);
+            li.classList.toggle('read', email.read);
+            li.classList.toggle('unread', !email.read); // Add unread class
 
+            const senderSpan = document.createElement('span');
+            senderSpan.className = 'sender holo-text';
+            senderSpan.textContent = email.sender;
+
+            const subjectSpan = document.createElement('span');
+            subjectSpan.className = 'subject holo-text';
+            subjectSpan.textContent = email.subject;
+
+            li.appendChild(senderSpan);
+            li.appendChild(subjectSpan);
+
+            li.addEventListener('click', () => {
+                displayEmailContent(email.id);
+                // Highlight this item
+                document.querySelectorAll('#emailList li').forEach(item => item.classList.remove('active'));
+                li.classList.add('active');
+            });
+
+            emailList.appendChild(li);
+        });
+    }
+
+    function displayEmailContent(emailId) {
+        const email = emails.find(e => e.id === emailId);
+        if (email) {
+            // Hide placeholder, show content elements
+            emailPlaceholder.style.display = 'none';
+            emailSubjectEl.style.display = 'block';
+            emailMetaEl.style.display = 'block';
+            emailBodyEl.style.display = 'block';
+
+            // Populate content
+            emailSubjectEl.textContent = email.subject;
+            emailSenderEl.textContent = `From: ${email.sender}`;
+            emailDateEl.textContent = `Received: ${email.date}`;
+            emailBodyEl.textContent = email.body;
+
+            // Mark as read (both in data and visually)
+            if (!email.read) {
+                email.read = true;
+                const listItem = emailList.querySelector(`li[data-email-id="${emailId}"]`);
+                if (listItem) {
+                    listItem.classList.remove('unread');
+                    listItem.classList.add('read');
+                }
+            }
+             // Scroll content to top
+            emailContent.scrollTop = 0;
+        }
+    }
+
+     function resetEmailContent() {
+        // Show placeholder, hide content elements
+        emailPlaceholder.style.display = 'block';
+        emailSubjectEl.style.display = 'none';
+        emailMetaEl.style.display = 'none';
+        emailBodyEl.style.display = 'none';
+        // Clear active selection in list
+        document.querySelectorAll('#emailList li').forEach(item => item.classList.remove('active'));
+    }
+
+
+    // ----- Ripple Effect on Click -----
+    document.addEventListener("click", function(e) {
+        // Prevent ripple effect on UI elements like buttons or slots
+        if (e.target.closest('button, .inventory-slot, #emailList li')) {
+            return;
+        }
+
+        const ripple = document.createElement("div");
+        ripple.classList.add("ripple");
+        // Base size on viewport, but keep it relatively contained
+        const size = Math.min(window.innerWidth, window.innerHeight) * 0.6; // Smaller base size
+        ripple.style.width = ripple.style.height = size + "px";
+        // Center the ripple on the click, considering its own size
+        ripple.style.left = e.clientX - size / 2 + "px";
+        ripple.style.top = e.clientY - size / 2 + "px";
+
+        document.body.appendChild(ripple);
+        ripple.addEventListener("animationend", () => {
+            ripple.remove();
+        });
+    });
+
+
+    // ----- Three.js Scene & Animation Code (Minimal Changes) -----
+    // Renamed functions to avoid potential conflicts if 'init'/'animate' are used elsewhere
+    let scene, camera, renderer;
+    let corridor;
+    let ceilingMesh, leftWallMesh, rightWallMesh;
+    let glyphs = [];
+    let globalGlyphFade = 0;
+    const CORRIDOR_SIZE = 2500;
+    let mouse = new THREE.Vector2(0, 0);
+    let targetRotationX = 0, targetRotationY = 0;
+    let floorTexture, ceilingTexture, leftWallTexture, rightWallTexture;
+    const SCROLL_SPEED_FLOOR = 0.0007;
+    const SCROLL_SPEED_CODE = 0.0005;
+    let plexusGroup;
+    const repulsionDistance = 120;
+    const repulsionForce = 1.5;
+    const friction = 0.93;
+
+    function initThreeJS() { // Renamed
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0d1b2a);
+      scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0007);
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+      camera.position.set(0, 0, 1800);
+      camera.lookAt(0, 0, 0);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+       // Insert the canvas behind the UI elements
+      renderer.domElement.style.position = 'fixed';
+      renderer.domElement.style.top = '0';
+      renderer.domElement.style.left = '0';
+      renderer.domElement.style.zIndex = '-1'; // Put it in the background
+      document.body.insertBefore(renderer.domElement, document.body.firstChild);
+
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      scene.add(ambientLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+      directionalLight.position.set(1, 1, 1).normalize();
+      scene.add(directionalLight);
+
+      corridor = new THREE.Group();
+      scene.add(corridor);
+
+      leftWallTexture = createCodeTexture(512);
+      leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping;
+      leftWallTexture.repeat.set(4, 5);
+      rightWallTexture = createCodeTexture(512);
+      rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
+      rightWallTexture.repeat.set(4, 5);
+      floorTexture = createCodeTexture(512);
+      floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+      floorTexture.repeat.set(4, 10);
+      ceilingTexture = createCircuitTexture(512);
+      ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
+      ceilingTexture.repeat.set(2, 2);
+
+      const leftWallMat = new THREE.MeshPhongMaterial({ map: leftWallTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+      const rightWallMat = new THREE.MeshPhongMaterial({ map: rightWallTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+      const floorMat = new THREE.MeshPhongMaterial({ map: floorTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+      const ceilingMat = new THREE.MeshPhongMaterial({ map: ceilingTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+
+      const planeGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
+      ceilingMesh = new THREE.Mesh(planeGeo, ceilingMat);
+      ceilingMesh.rotation.x = Math.PI / 2;
+      ceilingMesh.position.y = CORRIDOR_SIZE / 2;
+      corridor.add(ceilingMesh);
+
+      leftWallMesh = new THREE.Mesh(planeGeo, leftWallMat);
+      leftWallMesh.rotation.y = Math.PI / 2;
+      leftWallMesh.position.x = -CORRIDOR_SIZE / 2 - 500; // Start off-screen
+      corridor.add(leftWallMesh);
+
+      rightWallMesh = new THREE.Mesh(planeGeo, rightWallMat);
+      rightWallMesh.rotation.y = -Math.PI / 2;
+      rightWallMesh.position.x = CORRIDOR_SIZE / 2 + 500; // Start off-screen
+      corridor.add(rightWallMesh);
+
+      plexusGroup = createScrollingPlexus();
+      plexusGroup.rotation.x = -0.2;
+      plexusGroup.renderOrder = 1;
+      plexusGroup.scale.set(0, 0, 0); // Start scaled down
+      scene.add(plexusGroup);
+
+      const glyphLetters = ["ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ","𐎠","𐎣","𐎫"];
+      for (let i = 0; i < 30; i++) {
+        const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
+        const sprite = createGlyphSprite(letter);
+        if (Math.random() < 0.5) spawnGlyphOnWall(sprite);
+        else sprite.position.set((Math.random() - 0.5) * CORRIDOR_SIZE, Math.random() * 1950 - 700, -Math.random() * CORRIDOR_SIZE);
+        sprite.userData = { basePosition: sprite.position.clone(), oscillationSpeed: Math.random() * 0.5 + 0.5, velocity: new THREE.Vector3(0, 0, 0), lifetime: 0, maxLifetime: 12 + Math.random() * 12 };
+        glyphs.push(sprite);
+        scene.add(sprite);
+      }
+
+      window.addEventListener("resize", onWindowResize, false);
+      document.addEventListener("mousemove", onDocumentMouseMove, false);
+    }
+
+    function animateThreeJS() { // Renamed
+      requestAnimationFrame(animateThreeJS);
+      const time = Date.now() * 0.001;
+      const elapsedTime = time - loadingStartTime; // Use the stored start time
+
+      // Make sure elapsedTime is valid before using it
+      if (isNaN(elapsedTime)) return;
+
+      // Global glyph fade (starts slightly later now)
+      const glyphStartDelay = 3.5;
+      globalGlyphFade = (elapsedTime < glyphStartDelay) ? 0 : Math.min((elapsedTime - glyphStartDelay) / 1.5, 1); // Slower fade in
+
+      corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
+      corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
+
+      // Animate walls sliding in (sync with overall fade-in time)
+      const wallAnimDuration = 2.0;
+      const wallStartDelay = 0.5; // Start after login fade starts
+       if (elapsedTime >= wallStartDelay && elapsedTime < wallStartDelay + wallAnimDuration) {
+          const progress = (elapsedTime - wallStartDelay) / wallAnimDuration;
+          const easeProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI); // Ease-in-out
+          leftWallMesh.position.x = (-CORRIDOR_SIZE/2 - 500) + easeProgress * 500;
+          rightWallMesh.position.x = (CORRIDOR_SIZE/2 + 500) - easeProgress * 500;
+        } else if (elapsedTime >= wallStartDelay + wallAnimDuration) {
+          leftWallMesh.position.x = -CORRIDOR_SIZE/2;
+          rightWallMesh.position.x = CORRIDOR_SIZE/2;
+        }
+
+
+      floorTexture.offset.y += SCROLL_SPEED_FLOOR;
+      leftWallTexture.offset.y += SCROLL_SPEED_CODE;
+      rightWallTexture.offset.y += SCROLL_SPEED_CODE;
+      ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.5;
+
+      // Animate plexus appearance (sync with nav appearance)
+       const plexusStartDelay = 2.5;
+       const plexusAnimDuration = 1.5;
+        if (elapsedTime < plexusStartDelay) {
+            plexusGroup.scale.set(0, 0, 0);
+        } else if (elapsedTime < plexusStartDelay + plexusAnimDuration) {
+            const s = (elapsedTime - plexusStartDelay) / plexusAnimDuration;
+            const easeS = 0.5 - 0.5 * Math.cos(s * Math.PI); // Ease-in-out scale
+            plexusGroup.scale.set(easeS, easeS, easeS);
+        } else {
+            plexusGroup.scale.set(1, 1, 1);
+        }
+
+      if (plexusGroup && plexusGroup.children.length > 0) {
+        updateScrollingPlexus(plexusGroup.children[0], time);
+      }
+
+      updateGlyphs();
+      renderer.render(scene, camera);
+    }
+
+    // --- Helper functions for Three.js (mostly unchanged) ---
+    function createScrollingPlexus(){ /* ... unchanged ... */
+        const group = new THREE.Group();
+        const nodeCount = 160, threshold = 435, scrollSpeed = 1.0;
+        const regionMinX = -1100, regionMaxX = 1100, regionMinY = -1100, regionMaxY = -700;
+        const regionMinZ = -3000, regionMaxZ = 1200;
+        const regionWidth = regionMaxX - regionMinX, regionDepth = regionMaxZ - regionMinZ;
+        const nodes = [];
+        for (let i = 0; i < nodeCount; i++) {
+            const x = THREE.MathUtils.randFloat(regionMinX, regionMaxX);
+            const y = THREE.MathUtils.randFloat(regionMinY, regionMaxY);
+            const z = THREE.MathUtils.randFloat(regionMinZ, regionMaxZ);
+            const v = new THREE.Vector3(x, y, z);
+            v.userData = { phase: Math.random() * Math.PI * 2, amplitude: 20 + Math.random() * 10, scrollSpeed };
+            nodes.push(v);
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute([], 2));
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+            lineColor: { value: new THREE.Color(0x00ccff) }, center: { value: new THREE.Vector2(0.5, 0.5) }, maxDist: { value: 1.0 } },
+            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            fragmentShader: `uniform vec3 lineColor; uniform vec2 center; uniform float maxDist; varying vec2 vUv; void main() { float d = distance(vUv, center); float alpha = 1.0 - smoothstep(0.0, maxDist, d); gl_FragColor = vec4(lineColor, alpha * 0.6); }`, // Reduced alpha slightly
+            transparent: true, depthTest: true, depthWrite: false });
+        const plexusLines = new THREE.LineSegments(geometry, material);
+        plexusLines.frustumCulled = false; plexusLines.renderOrder = 1;
+        plexusLines.userData = { nodes, regionMinX, regionMaxX, regionMinZ, regionMaxZ, regionWidth, regionDepth, threshold };
+        group.add(plexusLines);
+        return group;
+    }
+    function updateScrollingPlexus(plexusLines, time) { /* ... unchanged ... */
+        const geometry = plexusLines.geometry;
+        const { nodes, regionMinX, regionMaxX, regionMinZ, regionMaxZ, regionWidth, regionDepth, threshold } = plexusLines.userData;
+        const positions = []; const uvs = [];
+        for (let i = 0; i < nodes.length; i++) {
+            const n = nodes[i];
+            n.y += Math.sin(time * 0.5 + n.userData.phase) * 0.2; // Slower vertical oscillation
+            n.z += n.userData.scrollSpeed;
+            if (n.z > regionMaxZ + 200) n.z = regionMinZ - 50;
+        }
+        for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+            const dist = nodes[i].distanceTo(nodes[j]);
+            if (dist < threshold) {
+                positions.push(nodes[i].x, nodes[i].y, nodes[i].z); positions.push(nodes[j].x, nodes[j].y, nodes[j].z);
+                const u1 = (nodes[i].x - regionMinX) / regionWidth; const v1 = (nodes[i].z - regionMinZ) / regionDepth;
+                const u2 = (nodes[j].x - regionMinX) / regionWidth; const v2 = (nodes[j].z - regionMinZ) / regionDepth;
+                uvs.push(u1, v1); uvs.push(u2, v2);
+            } } }
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geometry.attributes.position.needsUpdate = true; geometry.attributes.uv.needsUpdate = true;
+        geometry.computeBoundingSphere();
+    }
+    function createCodeTexture(size) { /* ... unchanged ... */
+        const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext("2d"); ctx.fillStyle = "#0d1b2a"; ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = "rgba(0, 204, 255, 0.4)"; ctx.font = "10px monospace";
+        const codeChars = ["0","1","∑","∆","≈","≠","Ω","π","Σ","Δ","¤","¥","µ","∂","ƒ","Ξ","Ψ","Φ","Λ","Ω"];
+        const columns = 40, rows = 50; const colWidth = size / columns, rowHeight = size / rows;
+        for (let c = 0; c < columns; c++) { for (let r = 0; r < rows; r++) {
+            const char = codeChars[Math.floor(Math.random() * codeChars.length)];
+            let x = c * colWidth + colWidth * 0.1; let y = r * rowHeight + rowHeight * 0.8;
+            ctx.fillText(char, x, y); } } return new THREE.CanvasTexture(canvas);
+    }
+    function createCircuitTexture(size) { /* ... unchanged ... */
+        const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext("2d"); ctx.fillStyle = "#0d1b2a"; ctx.fillRect(0, 0, size, size);
+        const lineCount = 25;
+        for (let i = 0; i < lineCount; i++) { ctx.strokeStyle = "rgba(0, 204, 255, 0.3)"; ctx.lineWidth = Math.random() * 2 + 1; ctx.beginPath();
+            let x1 = Math.random() * size, y1 = Math.random() * size; let x2 = x1 + (Math.random() - 0.5) * 150, y2 = y1 + (Math.random() - 0.5) * 150;
+            ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+        const arcCount = 15;
+        for (let i = 0; i < arcCount; i++) { ctx.strokeStyle = "rgba(0, 204, 255, 0.3)"; ctx.lineWidth = Math.random() * 2 + 1; ctx.beginPath();
+            let cx = Math.random() * size, cy = Math.random() * size; let r = Math.random() * 40 + 10;
+            ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); }
+        const textCount = 10; ctx.fillStyle = "rgba(0, 204, 255, 0.25)"; ctx.font = "14px monospace";
+        for (let i = 0; i < textCount; i++) { let tx = Math.random() * size, ty = Math.random() * size;
+            let hexString = Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase(); ctx.fillText(hexString, tx, ty); }
+        return new THREE.CanvasTexture(canvas);
+    }
+    function onWindowResize() { /* ... unchanged ... */
+        camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+    function onDocumentMouseMove(e) { /* ... unchanged ... */
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        const maxRotation = 0.08; targetRotationY = mouse.x * maxRotation; targetRotationX = mouse.y * maxRotation; }
+    function updateGlyphs() { /* ... unchanged ... */
+        glyphs.forEach(sprite => {
+            sprite.userData.lifetime += 0.016; const fade = 1 - (sprite.userData.lifetime / sprite.userData.maxLifetime);
+            sprite.material.opacity = Math.max(fade, 0) * globalGlyphFade; // Use global fade factor
+            if (fade <= 0.05) {
+                sprite.userData.lifetime = 0; sprite.userData.maxLifetime = 12 + Math.random() * 12;
+                if (Math.random() < 0.5) spawnGlyphOnWall(sprite);
+                else sprite.position.set((Math.random() - 0.5) * CORRIDOR_SIZE, Math.random() * 1950 - 700, -Math.random() * CORRIDOR_SIZE);
+                sprite.userData.basePosition.copy(sprite.position); sprite.userData.velocity.set(0, 0, 0);
+                sprite.material.opacity = 1.0 * globalGlyphFade; // Reset opacity considering global fade
+            }
+            const t = Date.now() * 0.001 * sprite.userData.oscillationSpeed;
+            sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 15;
+            sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 15;
+            const pos = sprite.position.clone(); pos.project(camera);
+            const glyphScreenX = (pos.x * 0.5 + 0.5) * window.innerWidth; const glyphScreenY = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+            const mouseScreenX = (mouse.x + 1) * 0.5 * window.innerWidth; const mouseScreenY = (-mouse.y + 1) * 0.5 * window.innerHeight;
+            const dist = Math.hypot(glyphScreenX - mouseScreenX, glyphScreenY - mouseScreenY);
+            if (dist < repulsionDistance) {
+                const dx = glyphScreenX - mouseScreenX; const dy = glyphScreenY - mouseScreenY; const angle = Math.atan2(dy, dx);
+                const pushX = Math.cos(angle) * repulsionForce; const pushY = Math.sin(angle) * repulsionForce;
+                sprite.userData.velocity.x += pushX; sprite.userData.velocity.y += pushY;
+            }
+            sprite.userData.velocity.multiplyScalar(friction);
+            sprite.position.x += sprite.userData.velocity.x; sprite.position.y += sprite.userData.velocity.y;
+            const d = camera.position.distanceTo(sprite.position);
+            const minDist = 500, maxDist = 2000; const scaleClose = 400, scaleFar = 200;
+            const clampDist = THREE.MathUtils.clamp(d, minDist, maxDist); const alpha = (clampDist - minDist) / (maxDist - minDist);
+            const finalScale = scaleClose * (1 - alpha) + scaleFar * alpha;
+            sprite.scale.set(finalScale, finalScale, 1);
+        });
+    }
+    function spawnGlyphOnWall(sprite) { /* ... unchanged ... */
+        const wallTypes = [0, 1, 3]; const wallType = wallTypes[Math.floor(Math.random() * wallTypes.length)];
+        const offset = 50; let x, y;
+        if (wallType === 0) { x = -CORRIDOR_SIZE / 2 + offset; y = Math.random() * 1950 - 700; }
+        else if (wallType === 1) { x = CORRIDOR_SIZE / 2 - offset; y = Math.random() * 1950 - 700; }
+        else { y = CORRIDOR_SIZE / 2 - offset; x = (Math.random() - 0.5) * CORRIDOR_SIZE; }
+        const z = -Math.random() * CORRIDOR_SIZE; sprite.position.set(x, y, z);
+    }
+    function createGlyphSprite(letter) { /* ... unchanged ... */
+        const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128;
+        const ctx = canvas.getContext("2d"); ctx.clearRect(0, 0, 128, 128);
+        ctx.font = "100px Arial"; ctx.fillStyle = "rgba(0,204,255,1.0)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(letter, 64, 64); const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.1, sizeAttenuation: true }); // sizeAttenuation enabled
+        const sprite = new THREE.Sprite(material); sprite.renderOrder = 2; sprite.scale.set(120, 120, 1); // Initial scale set here, but updateGlyphs overrides it based on distance
+        return sprite;
+    }
+
+  </script>
 </body>
-
 </html>
