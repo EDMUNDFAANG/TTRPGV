@@ -132,7 +132,7 @@
     let floorTexture, ceilingTexture, leftWallTexture, rightWallTexture;
 
     // Scrolling speeds
-    const SCROLL_SPEED_FLOOR = 0.0007; // Slightly faster for a “cascading” look
+    const SCROLL_SPEED_FLOOR = 0.0007; 
     const SCROLL_SPEED_CODE = 0.0005;
 
     // Plexus group
@@ -173,7 +173,7 @@
       corridor = new THREE.Group();
       scene.add(corridor);
 
-      // =============== CODE TEXTURES FOR WALLS & FLOOR ===============
+      // ====== Code Textures for Walls & Floor ======
       leftWallTexture = createCodeTexture(512);
       leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping;
       leftWallTexture.repeat.set(4, 5);
@@ -182,13 +182,12 @@
       rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
       rightWallTexture.repeat.set(4, 5);
 
-      // Floor also uses code texture for that “sliding text” effect
+      // Floor uses code texture for sliding text
       floorTexture = createCodeTexture(512);
       floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-      // Slightly taller repeat for more vertical “flow”
       floorTexture.repeat.set(4, 10);
 
-      // Ceiling can keep the circuit pattern, or also code if you prefer
+      // Ceiling can keep circuit
       ceilingTexture = createCircuitTexture(512);
       ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
       ceilingTexture.repeat.set(2, 2);
@@ -228,30 +227,30 @@
       corridor.add(floorMesh);
 
       // Ceiling
-      const ceilingMesh = new THREE.Mesh(planeGeo, ceilingMat);
+      ceilingMesh = new THREE.Mesh(planeGeo, ceilingMat);
       ceilingMesh.rotation.x = Math.PI / 2;
       ceilingMesh.position.y = CORRIDOR_SIZE / 2; // +1250
       corridor.add(ceilingMesh);
 
       // Left Wall
-      const leftWallMesh = new THREE.Mesh(planeGeo, leftWallMat);
+      leftWallMesh = new THREE.Mesh(planeGeo, leftWallMat);
       leftWallMesh.rotation.y = Math.PI / 2;
       leftWallMesh.position.x = -CORRIDOR_SIZE / 2; // -1250
       corridor.add(leftWallMesh);
 
       // Right Wall
-      const rightWallMesh = new THREE.Mesh(planeGeo, rightWallMat);
+      rightWallMesh = new THREE.Mesh(planeGeo, rightWallMat);
       rightWallMesh.rotation.y = -Math.PI / 2;
       rightWallMesh.position.x = CORRIDOR_SIZE / 2; // +1250
       corridor.add(rightWallMesh);
 
-      // =============== STATIC PLEXUS (LOWER & MORE CONNECTED) ===============
-      plexusGroup = createStaticPlexus();
-      // Angle it downward so it slopes away from the camera
-      plexusGroup.rotation.x = -0.3;
+      // ========== SCROLLING PLEXUS (Expanded Z Range & Lower Y) ==========
+      plexusGroup = createScrollingPlexus();
+      // Tilt downward so it feels below the user
+      plexusGroup.rotation.x = -0.2;
       scene.add(plexusGroup);
 
-      /* ====== GLYPH SPRITES (30 total) ====== */
+      // ====== Glyph Sprites (30 total) ======
       const glyphLetters = [
         "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
         "𐎠","𐎣","𐎫"
@@ -298,6 +297,92 @@
           btn.classList.add("active");
         });
       });
+    }
+
+    /* ============= CREATE SCROLLING PLEXUS ============= */
+    function createScrollingPlexus() {
+      const group = new THREE.Group();
+
+      // Less dense
+      const nodeCount = 165;
+      const threshold = 440;
+      const scrollSpeed = 1.0;
+
+      // Fill corridor width, keep it lower in Y, large Z range behind & in front
+      // so it appears below the user and flows forward.
+      const regionMinX = -1100, regionMaxX = 1100;
+      const regionMinY = -1100, regionMaxY = -700;
+      // Start from far behind (-3000) and come up near the camera (1200).
+      const regionMinZ = -3000, regionMaxZ = 1200;
+
+      const regionWidth = regionMaxX - regionMinX;
+      const regionHeight = regionMaxY - regionMinY;
+      const regionDepth = regionMaxZ - regionMinZ;
+
+      // Create nodes
+      const nodes = [];
+      for (let i = 0; i < nodeCount; i++) {
+        const x = THREE.MathUtils.randFloat(regionMinX, regionMaxX);
+        const y = THREE.MathUtils.randFloat(regionMinY, regionMaxY);
+        const z = THREE.MathUtils.randFloat(regionMinZ, regionMaxZ);
+
+        const v = new THREE.Vector3(x, y, z);
+        v.userData = {
+          phase: Math.random() * Math.PI * 2,
+          amplitude: 20 + Math.random() * 10,
+          scrollSpeed
+        };
+        nodes.push(v);
+      }
+
+      // Empty geometry
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+      geometry.setAttribute('uv', new THREE.Float32BufferAttribute([], 2));
+
+      // Fade-from-center shader
+      const material = new THREE.ShaderMaterial({
+        uniforms: {
+          lineColor: { value: new THREE.Color(0x00ccff) },
+          center: { value: new THREE.Vector2(0.5, 0.5) },
+          maxDist: { value: 1.0 }
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 lineColor;
+          uniform vec2 center;
+          uniform float maxDist;
+          varying vec2 vUv;
+          void main() {
+            float d = distance(vUv, center);
+            float alpha = 1.0 - smoothstep(0.0, maxDist, d);
+            gl_FragColor = vec4(lineColor, alpha);
+          }
+        `,
+        transparent: true,
+        depthTest: true,
+        depthWrite: false
+      });
+
+      const plexusLines = new THREE.LineSegments(geometry, material);
+      plexusLines.frustumCulled = false;
+
+      plexusLines.userData = {
+        nodes,
+        regionMinX, regionMaxX,
+        regionMinZ, regionMaxZ,
+        regionWidth, regionDepth,
+        threshold
+      };
+
+      group.add(plexusLines);
+      return group;
     }
 
     /* ============= CREATE CODE TEXTURE (WALLS/FLOOR) ============= */
@@ -375,89 +460,6 @@
       return new THREE.CanvasTexture(canvas);
     }
 
-    /* ============= CREATE STATIC PLEXUS (LOWER & DENSE) ============= */
-    function createStaticPlexus() {
-      const group = new THREE.Group();
-
-      // We'll place nodes in a lower region so they're not in the user's face
-      // and keep them fairly close together for more connections.
-      const nodeCount = 120;
-      const threshold = 400; // Larger for more lines
-      // x-range somewhat wide, y-range is from -1000 to -600, z-range is small
-      const regionMinX = -800, regionMaxX = 800;
-      const regionMinY = -1000, regionMaxY = -600;
-      const regionMinZ = -200, regionMaxZ = 200;
-
-      const regionWidth = regionMaxX - regionMinX;
-      const regionHeight = regionMaxY - regionMinY;
-      const regionDepth = regionMaxZ - regionMinZ;
-
-      const nodes = [];
-      for (let i = 0; i < nodeCount; i++) {
-        const x = THREE.MathUtils.randFloat(regionMinX, regionMaxX);
-        const y = THREE.MathUtils.randFloat(regionMinY, regionMaxY);
-        const z = THREE.MathUtils.randFloat(regionMinZ, regionMaxZ);
-
-        const v = new THREE.Vector3(x, y, z);
-        // Gentle vertical oscillation
-        v.userData = {
-          phase: Math.random() * Math.PI * 2,
-          amplitude: 20 + Math.random() * 10
-        };
-        nodes.push(v);
-      }
-
-      // Empty geometry
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
-      geometry.setAttribute('uv', new THREE.Float32BufferAttribute([], 2));
-
-      // Fade-from-center shader
-      const material = new THREE.ShaderMaterial({
-        uniforms: {
-          lineColor: { value: new THREE.Color(0x00ccff) },
-          center: { value: new THREE.Vector2(0.5, 0.5) },
-          maxDist: { value: 1.0 }
-        },
-        vertexShader: `
-          varying vec2 vUv;
-          void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `,
-        fragmentShader: `
-          uniform vec3 lineColor;
-          uniform vec2 center;
-          uniform float maxDist;
-          varying vec2 vUv;
-          void main() {
-            float d = distance(vUv, center);
-            float alpha = 1.0 - smoothstep(0.0, maxDist, d);
-            gl_FragColor = vec4(lineColor, alpha);
-          }
-        `,
-        transparent: true,
-        depthTest: true,
-        depthWrite: false
-      });
-
-      const plexusLines = new THREE.LineSegments(geometry, material);
-      plexusLines.frustumCulled = false;
-
-      // Store data for updating
-      plexusLines.userData = {
-        nodes,
-        regionMinX, regionMaxX,
-        regionMinZ, regionMaxZ,
-        regionWidth, regionDepth,
-        threshold
-      };
-
-      group.add(plexusLines);
-      return group;
-    }
-
     /* ============= MOUSE & WINDOW EVENTS ============= */
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -483,15 +485,14 @@
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
 
       // Scroll the code textures on walls & floor
-      // Floor scrolls a bit faster for that cascading effect
       floorTexture.offset.y += SCROLL_SPEED_FLOOR;
       leftWallTexture.offset.y += SCROLL_SPEED_CODE;
       rightWallTexture.offset.y += SCROLL_SPEED_CODE;
-      ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.5; // If you want a subtle drift
+      ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.5;
 
-      // Update static plexus lines
+      // Update the scrolling plexus
       if (plexusGroup && plexusGroup.children.length > 0) {
-        updateStaticPlexus(plexusGroup.children[0], time);
+        updateScrollingPlexus(plexusGroup.children[0], time);
       }
 
       // Update glyphs
@@ -500,8 +501,8 @@
       renderer.render(scene, camera);
     }
 
-    /* ============= UPDATE STATIC PLEXUS ============= */
-    function updateStaticPlexus(plexusLines, time) {
+    /* ============= UPDATE SCROLLING PLEXUS ============= */
+    function updateScrollingPlexus(plexusLines, time) {
       const geometry = plexusLines.geometry;
       const {
         nodes,
@@ -514,19 +515,19 @@
       const positions = [];
       const uvs = [];
 
-      // Gentle vertical oscillation
+      // Move each node forward (in +z) with mild vertical oscillation
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
-        const ph = n.userData.phase;
-        const amp = n.userData.amplitude;
-        // Sine wave in Y
-        n.y += Math.sin(time + ph) * 0.2;
+        n.y += Math.sin(time + n.userData.phase) * 0.2;
+        n.z += n.userData.scrollSpeed;
 
-        // We can also clamp or re-check if you want to keep them in range,
-        // but here we let them float a bit.
+        // If node passes regionMaxZ + margin, reset behind regionMinZ
+        if (n.z > regionMaxZ + 200) {
+          n.z = regionMinZ - 50;
+        }
       }
 
-      // Build lines
+      // Connect nodes within threshold
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const dist = nodes[i].distanceTo(nodes[j]);
@@ -535,11 +536,11 @@
             positions.push(nodes[i].x, nodes[i].y, nodes[i].z);
             positions.push(nodes[j].x, nodes[j].y, nodes[j].z);
 
-            // compute UV for fade effect (just using x,z)
+            // compute UV for fade effect (based on x,z)
             const u1 = (nodes[i].x - regionMinX) / (regionMaxX - regionMinX);
-            const v1 = (nodes[i].z - regionMinZ) / (regionMaxZ - regionMinZ);
+            const v1 = (nodes[i].z - regionMinZ) / regionDepth;
             const u2 = (nodes[j].x - regionMinX) / (regionMaxX - regionMinX);
-            const v2 = (nodes[j].z - regionMinZ) / (regionMaxZ - regionMinZ);
+            const v2 = (nodes[j].z - regionMinZ) / regionDepth;
 
             uvs.push(u1, v1);
             uvs.push(u2, v2);
@@ -655,7 +656,7 @@
       const material = new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
-        alphaTest: 0.1, // remove the square edges
+        alphaTest: 0.1, // remove square edges
       });
       material.sizeAttenuation = true;
 
