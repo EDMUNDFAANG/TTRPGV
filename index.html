@@ -148,7 +148,7 @@
       transform: translateY(-20px);
       animation: buttonFadeIn 0.8s forwards;
     }
-    /* Staggered delays – center "email" appears first */
+    /* Removed 'active' from Inventory; no button is preselected */
     nav button[data-section="email"] { animation-delay: 3.2s; }
     nav button[data-section="inventory"] { animation-delay: 3.4s; }
     nav button[data-section="map"] { animation-delay: 3.6s; }
@@ -165,7 +165,7 @@
       transform: scale(1.05);
     }
     
-    /* ===== Content Wrapper for Floating UI Panels ===== */
+    /* ===== Content Panels Wrapper ===== */
     #contentWrapper {
       opacity: 0;
       animation: contentFadeIn 1s forwards;
@@ -203,6 +203,84 @@
       margin: 0;
     }
     
+    /* ===== New Inventory Container ===== */
+   #inventoryContainer {
+  display: none; /* Hidden by default */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 300;
+  width: 900px;
+  padding: 20px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(8px);
+  border: 2px solid rgba(0,204,255,0.3);
+  border-radius: 20px;
+  box-shadow: 0 0 20px rgba(0,204,255,0.2);
+  gap: 20px;
+}
+
+    .inventory-grid {
+      flex: 2;
+      display: grid;
+      grid-template-columns: repeat(4, 100px);
+      grid-template-rows: repeat(4, 100px);
+      gap: 15px;
+      justify-content: center;
+      align-content: start;
+    }
+    .inventory-slot {
+      width: 100px;
+      height: 100px;
+      border: 2px solid rgba(0,204,255,0.3);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border 0.3s;
+      cursor: pointer;
+    }
+    .inventory-slot:hover {
+      border-color: rgba(0,204,255,0.6);
+    }
+    .inventory-slot img {
+      max-width: 90%;
+      max-height: 90%;
+    }
+    .item-info {
+      flex: 1;
+      border: 2px solid rgba(0,204,255,0.3);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.2);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .item-info h2 {
+      margin: 0 0 10px 0;
+      font-size: 1.2em;
+    }
+    .item-info p {
+      font-size: 0.9em;
+    }
+    .item-actions button {
+      background: transparent;
+      border: 2px solid var(--accent-color);
+      color: var(--accent-color);
+      margin-right: 10px;
+      padding: 8px 16px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.3s;
+      font-family: 'Orbitron', sans-serif;
+    }
+    .item-actions button:hover {
+      background: rgba(0,204,255,0.2);
+    }
+    
     /* ===== Refined Ripple Effect ===== */
     .ripple {
       position: absolute;
@@ -237,14 +315,12 @@
 </head>
 <body>
   <!-- ===== Login Panel ===== -->
-<div id="loginPanel" class="content-card active">
-  <h1 class="holo-text">Access Required</h1>
-  <input type="text" id="username" placeholder="Username" />
-  <input type="password" id="passcode" placeholder="Passcode" />
-  <button id="loginButton">Enter</button>
-</div>
-
-
+  <div id="loginPanel" class="content-card active">
+    <h1 class="holo-text">Access Required</h1>
+    <input type="text" id="username" placeholder="Username" />
+    <input type="password" id="passcode" placeholder="Passcode" />
+    <button id="loginButton">Enter</button>
+  </div>
 
   <!-- ===== Main Content (hidden until login) ===== -->
   <div id="mainContent">
@@ -253,7 +329,7 @@
     
     <!-- ===== Navigation ===== -->
     <nav>
-      <button data-section="inventory" class="active holo-text">Inventory</button>
+      <button data-section="inventory" class="holo-text">Inventory</button>
       <button data-section="map" class="holo-text">Map</button>
       <button data-section="email" class="holo-text">Email</button>
       <button data-section="codex" class="holo-text">Codex</button>
@@ -262,9 +338,8 @@
     
     <!-- ===== Content Panels Wrapper ===== -->
     <div id="contentWrapper">
-      <div id="inventory" class="content-card active">
-        <h1 class="holo-text">Inventory</h1>
-        <p class="holo-text">Inventory details go here.</p>
+      <div id="inventory" class="content-card">
+        <!-- Note: old inventory panel removed -->
       </div>
       <div id="map" class="content-card">
         <h1 class="holo-text">Map</h1>
@@ -282,41 +357,48 @@
         <h1 class="holo-text">Scanner</h1>
         <p class="holo-text">Scanner details go here.</p>
       </div>
+      <div id="scanner" class="content-card">
+        <h1 class="holo-text">Vitals</h1>
+        <p class="holo-text">Vitals details go here.</p>
     </div>
   </div>
 
-  <!-- ===== Three.js Scene & Animus Corridor Simulation ===== -->
+  <!-- ===== New Inventory Container (initially hidden) ===== -->
+  <div id="inventoryContainer">
+    <!-- Left side: inventory slots -->
+    <div class="inventory-grid">
+      <!-- 16 slots (4×4) as an example -->
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 1" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 2" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 3" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 4" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 5" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 6" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 7" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 8" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 9" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 10" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 11" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 12" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 13" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 14" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 15" /></div>
+      <div class="inventory-slot"><img src="placeholder.png" alt="Slot 16" /></div>
+    </div>
+    
+    <!-- Right side: item info panel -->
+    <div class="item-info">
+      <div class="item-details">
+        <h2 class="holo-text">Item Information</h2>
+        <p class="holo-text">Select an item to see details here.</p>
+      </div>
+      <div class="item-actions">
+        <button class="holo-text">Use</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    let scene, camera, renderer;
-    let corridor;
-    let ceilingMesh, leftWallMesh, rightWallMesh;
-    let glyphs = [];
-    let globalGlyphFade = 0; // Global factor for glyph opacity
-
-    const CORRIDOR_SIZE = 2500;
-
-    // Mouse & rotation targets
-    let mouse = new THREE.Vector2(0, 0);
-    let targetRotationX = 0, targetRotationY = 0;
-
-    // Textures for faces
-    let floorTexture, ceilingTexture, leftWallTexture, rightWallTexture;
-
-    // Scrolling speeds
-    const SCROLL_SPEED_FLOOR = 0.0007;
-    const SCROLL_SPEED_CODE = 0.0005;
-
-    // Plexus group
-    let plexusGroup;
-
-    // Repulsion for glyphs
-    const repulsionDistance = 120;
-    const repulsionForce = 1.5;
-    const friction = 0.93;
-
-    // Variables for loading sequence
-    let loadingStartTime = 0; // Will be set after login
-
     // ----- Login Handling -----
     document.getElementById("loginButton").addEventListener("click", function() {
       const username = document.getElementById("username").value.trim();
@@ -334,53 +416,100 @@
       }
     });
 
+    // ----- Navigation & Inventory Show/Hide Logic -----
+    const navButtons = document.querySelectorAll("nav button[data-section]");
+const inventoryContainer = document.getElementById("inventoryContainer");
+
+navButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    // Remove 'active' class from all nav buttons.
+    navButtons.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    // Hide all content panels (the old ones)
+    const contentCards = document.querySelectorAll(".content-card");
+    contentCards.forEach(card => card.classList.remove("active"));
+
+    // Determine which section to display.
+    const section = btn.getAttribute("data-section");
+
+    if (section === "inventory") {
+      // Show the new inventory container if "Inventory" is selected.
+      inventoryContainer.style.display = "flex";
+    } else {
+      // Otherwise, hide the inventory container.
+      inventoryContainer.style.display = "none";
+      // And display the corresponding content-card.
+      const targetCard = document.getElementById(section);
+      if (targetCard) {
+        targetCard.classList.add("active");
+      }
+    }
+  });
+});
+
+    // ----- Inventory Slot Clicks -----
+    const slots = document.querySelectorAll(".inventory-slot");
+    const itemTitle = document.querySelector(".item-details h2");
+    const itemDesc = document.querySelector(".item-details p");
+    slots.forEach((slot, index) => {
+      slot.addEventListener("click", () => {
+        itemTitle.textContent = "Item Slot " + (index + 1);
+        itemDesc.textContent = "Details for the item in slot " + (index + 1) + ".";
+      });
+    });
+
+    // ----- Three.js Scene & Animation Code -----
+    let scene, camera, renderer;
+    let corridor;
+    let ceilingMesh, leftWallMesh, rightWallMesh;
+    let glyphs = [];
+    let globalGlyphFade = 0; // Global factor for glyph opacity
+
+    const CORRIDOR_SIZE = 2500;
+    let mouse = new THREE.Vector2(0, 0);
+    let targetRotationX = 0, targetRotationY = 0;
+    let floorTexture, ceilingTexture, leftWallTexture, rightWallTexture;
+    const SCROLL_SPEED_FLOOR = 0.0007;
+    const SCROLL_SPEED_CODE = 0.0005;
+    let plexusGroup;
+    const repulsionDistance = 120;
+    const repulsionForce = 1.5;
+    const friction = 0.93;
+
     function init() {
-      // Scene & Fog
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0d1b2a);
       scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0007);
-
-      // Camera
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
       camera.position.set(0, 0, 1800);
       camera.lookAt(0, 0, 0);
-
-      // Renderer
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
-      // Lights
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
       scene.add(ambientLight);
       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
       directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
 
-      // Corridor Group
       corridor = new THREE.Group();
       scene.add(corridor);
 
-      // ====== Code Textures for Walls & "Floor" ======
       leftWallTexture = createCodeTexture(512);
       leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping;
       leftWallTexture.repeat.set(4, 5);
-
       rightWallTexture = createCodeTexture(512);
       rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
       rightWallTexture.repeat.set(4, 5);
-
-      // Floor texture (unused)
       floorTexture = createCodeTexture(512);
       floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
       floorTexture.repeat.set(4, 10);
-
-      // Ceiling uses a circuit texture
       ceilingTexture = createCircuitTexture(512);
       ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
       ceilingTexture.repeat.set(2, 2);
 
-      // Materials
       const leftWallMat = new THREE.MeshPhongMaterial({
         map: leftWallTexture,
         side: THREE.DoubleSide,
@@ -406,35 +535,28 @@
         opacity: 0.7
       });
 
-      // Create geometry for the corridor
       const planeGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
-
-      // === Ceiling ===
       ceilingMesh = new THREE.Mesh(planeGeo, ceilingMat);
       ceilingMesh.rotation.x = Math.PI / 2;
       ceilingMesh.position.y = CORRIDOR_SIZE / 2;
       corridor.add(ceilingMesh);
 
-      // === Left Wall ===
       leftWallMesh = new THREE.Mesh(planeGeo, leftWallMat);
       leftWallMesh.rotation.y = Math.PI / 2;
       leftWallMesh.position.x = -CORRIDOR_SIZE / 2 - 500;
       corridor.add(leftWallMesh);
 
-      // === Right Wall ===
       rightWallMesh = new THREE.Mesh(planeGeo, rightWallMat);
       rightWallMesh.rotation.y = -Math.PI / 2;
       rightWallMesh.position.x = CORRIDOR_SIZE / 2 + 500;
       corridor.add(rightWallMesh);
 
-      // ========== SCROLLING PLEXUS ==========
       plexusGroup = createScrollingPlexus();
       plexusGroup.rotation.x = -0.2;
       plexusGroup.renderOrder = 1;
       plexusGroup.scale.set(0, 0, 0);
       scene.add(plexusGroup);
 
-      // ====== GLYPH SPRITES (30 total) ======
       const glyphLetters = [
         "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
         "𐎠","𐎣","𐎫"
