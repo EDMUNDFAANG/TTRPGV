@@ -618,7 +618,7 @@
     <!-- Right side: item info panel -->
     <div class="item-info">
       <div class="item-details">
-        <h2 class="holo-text" id="itemInfoTitle">Item Information</h2>
+        <h2 class="holo-text" id="itemInfoTitle">Item(s)</h2>
         <p class="holo-text" id="itemInfoDesc">Select an item from the grid.</p>
       </div>
       <div class="item-actions">
@@ -654,16 +654,16 @@
 
     // ----- Dummy Data -----
     const inventoryItems = { // Simple item data store
-        "health_potion_1": { name: "Medi-Gel (Basic)", description: "Standard issue regenerative gel. Seals minor wounds and provides temporary pain relief. Single use.", usable: true },
-        "keycard_alpha": { name: "Access Key: Sector Alpha", description: "Standard personnel keycard. Grants access to Alpha Sector maintenance hatches and common areas.", usable: false },
+        "health_potion_1": { name: "Medi-Gel (Basic)", description: "Standard issue regen-gel. Seals minor wounds and provides temporary pain relief. Single use.", usable: true },
+        "keycard_alpha": { name: "Access Key (Gestalt-Class-Ship): Sector Gamma", description: "Standard personnel keycard. Grants access to Gamma Sector maintenance hatches and common areas. (The depths floor.)", usable: false },
         // Add more items here referenced by data-itemid in HTML
     };
 
     const emails = [
-        { id: 1, sender: "System Operations", subject: "Welcome to the Animus Corridor", date: "Cycle 34.1", body: "Unit VST-VYN,\n\nYour connection to the Animus Corridor Simulation is confirmed. All core systems nominal.\n\nRemember to consult the Data Codex for operational procedures and review safety protocols.\n\nReport any anomalies immediately via the designated channel.\n\n- SysOps Command", read: false },
-        { id: 2, sender: "Quartermaster Unit 7", subject: "Inventory Manifest Update", date: "Cycle 34.0", body: "Attn: V. Vyntarion,\n\nYour starting equipment has been dispatched:\n- Standard Issue Sidearm (Check Scanner Slot)\n- Medi-Gel (Basic) x2\n- Access Key: Sector Alpha\n\nConfirm receipt.\n\n- QM-7", read: false },
-        { id: 3, sender: "WARNING - Automated Alert", subject: "Energy Fluctuation Detected - Sector Gamma", date: "Cycle 33.9", body: "ALERT: Unidentified energy signature detected originating from Sector Gamma, Grid 7G-Delta.\n\nMagnitude exceeds standard operational parameters.\n\nProceed with caution. Avoid area until cleared by Hazard Containment.\n\nRECORD ID: AE-8873-G", read: true },
-         { id: 4, sender: "Dr. Aris Thorne", subject: "Re: Research Query", date: "Cycle 33.8", body: "Vesta,\n\nRegarding your query on the chroniton field distortions - the patterns are inconsistent with known phenomena. My simulations suggest an external influence, but I lack sufficient data.\n\nKeep your scanner active. Any unusual energy readings, especially temporal signatures, forward them to me directly. This is priority Alpha.\n\nStay safe,\nAris", read: false },
+        { id: 1, sender: "System Operations", subject: "Holo-Pad Calibration", date: "G34.1", body: "Personnel VST-VYN,\n\nYour connection to the Holo-Oad is confirmed. All core systems nominal.\n\nRemember to consult the Data Codex for operational procedures and review safety protocols.\n\nReport any anomalies immediately via the designated channel.\n\n- GestOps Command", read: false },
+        { id: 2, sender: "Quartermaster Unit 7", subject: "Inventory Manifest Update", date: "G34.0", body: "Attn: V. Vyntarion,\n\nYour starting equipment has been dispatched:\n- Standard Issue Sidearm (Check Scanner Slot)\n- Medi-Gel (Basic) x2\n- Access Key: Sector Alpha\n\nConfirm receipt.\n\n- QM-7", read: false },
+        { id: 3, sender: "WARNING - Automated Alert", subject: "Energy Fluctuation Detected - Sector Gamma", date: "G33.9", body: "ALERT: Unidentified energy signature detected originating from Sector Gamma.\n\n Gestalt-Drive Null Magnitude exceeds standard operational parameters.\n\nProceed with caution. Avoid area until cleared by Hazard Containment.\n\nRECORD ID: AE-8873-G", read: true },
+         { id: 4, sender: "Dr. Aris T.", subject: "Re: Research Query", date: "G33.8", body: "Vesta,\n\nRegarding your query for your prosthetic container, I have a few key pieces of newfound information. My studies suggest an external influence, but I lack sufficient data.\n\nKeep your scanner active. Any unusual energy readings, especially temporal signatures, forward them to me directly.\n\nStay safe,\nAris", read: false },
     ];
 
     // ----- Login Handling -----
