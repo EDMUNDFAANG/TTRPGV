@@ -3,22 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Animus Corridor Simulation - Enhanced</title>
-  <!-- Include Three.js -->
+  <title>Animus Corridor Simulation - Advanced</title>
+  <!-- Three.js from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
-    /* Reset & Base Styles */
+    /* ===== Reset & Base Styles ===== */
     html, body {
       margin: 0; 
       padding: 0;
       overflow: hidden;
-      background: #0d1b2a;
+      background: #0d1b2a; /* fallback if WebGL fails */
       font-family: Arial, sans-serif;
     }
     canvas {
       display: block;
     }
-    /* Navigation Bar */
+
+    /* ===== Navigation Bar ===== */
     nav {
       position: fixed;
       top: 0;
@@ -48,7 +49,8 @@
       color: #000;
       transform: scale(1.05);
     }
-    /* Centered Content Card */
+
+    /* ===== Centered Content Card ===== */
     .content-card {
       position: fixed;
       top: 50%;
@@ -75,14 +77,14 @@
       font-size: 1.1em;
       line-height: 1.6em;
     }
-    /* Only display Inventory by default */
+    /* Show only Inventory by default */
     #map, #email, #codex, #scanner {
       display: none;
     }
   </style>
 </head>
 <body>
-  <!-- Navigation -->
+  <!-- ===== Navigation ===== -->
   <nav>
     <button data-section="inventory" class="active">Inventory</button>
     <button data-section="map">Map</button>
@@ -90,7 +92,8 @@
     <button data-section="codex">Codex</button>
     <button data-section="scanner">Scanner</button>
   </nav>
-  <!-- Content Cards -->
+
+  <!-- ===== Content Cards ===== -->
   <div id="inventory" class="content-card">
     <h1>Inventory</h1>
     <p>Inventory details go here.</p>
@@ -112,114 +115,145 @@
     <p>Scanner details go here.</p>
   </div>
 
-  <!-- Three.js Scene -->
+  <!-- ===== Three.js Scene ===== -->
   <script>
     let scene, camera, renderer;
-    let corridor, techShapes;
-    let glyphs = [];
+    let corridor;
+    let corridorEdges = []; // store edges so we can see wireframe lines
+    let techShapesGroup;    // group for the “tech shapes”
+    let glyphs = [];        // array of glyph sprites
+
+    // Corridor config
+    const CORRIDOR_SIZE = 2000;
+
+    // Mouse & corridor rotation
     let mouse = new THREE.Vector2(0, 0);
     let targetRotationX = 0, targetRotationY = 0;
-    
-    // For glyph interaction
+
+    // Interactivity
     const repulsionDistance = 100;
-    const repulsionForce = 0.5;
-    
+    const repulsionForce = 1.0; // stronger push
+    const friction = 0.95;
+
     init();
     animate();
 
     function init() {
-      // Create Scene with deep blue background and heavy fog
+      /* ===== Scene & Fog ===== */
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0d1b2a);
-      scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0012);
+      // Lessen fog a bit so corridor is more visible
+      scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0008);
 
-      // Camera
+      /* ===== Camera ===== */
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 5000);
-      camera.position.set(0, 0, 800);
+      // Position camera somewhat inside corridor
+      camera.position.set(0, 200, 1000);
+      camera.lookAt(0, 0, 0);
 
-      // Renderer
+      /* ===== Renderer ===== */
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
-      // Lights
+      /* ===== Lights ===== */
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
       scene.add(ambientLight);
       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
       directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
 
-      // Corridor: Build an open-ended corridor (floor, ceiling, left/right walls)
+      /* ===== Corridor (Open-Ended) ===== */
       corridor = new THREE.Group();
-      const size = 4000;
-      const half = size / 2;
-      const gridTexture = createGridTexture();
+      const half = CORRIDOR_SIZE / 2;
+      // Use a “techy” custom texture
+      const corridorTexture = createTechBackgroundTexture(512);
+      corridorTexture.wrapS = corridorTexture.wrapT = THREE.RepeatWrapping;
+      // For a more condensed pattern, repeat it more
+      corridorTexture.repeat.set(2, 2);
+
       const corridorMat = new THREE.MeshPhongMaterial({
-        map: gridTexture,
+        map: corridorTexture,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.5
+        opacity: 0.65
       });
 
       // Floor
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(size, size), corridorMat);
+      const floorGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
+      const floor = new THREE.Mesh(floorGeo, corridorMat);
       floor.rotation.x = -Math.PI / 2;
       floor.position.y = -half;
       corridor.add(floor);
+      addEdges(floorGeo, floor);
+
       // Ceiling
-      const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(size, size), corridorMat);
+      const ceilingGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
+      const ceiling = new THREE.Mesh(ceilingGeo, corridorMat);
       ceiling.rotation.x = Math.PI / 2;
       ceiling.position.y = half;
       corridor.add(ceiling);
+      addEdges(ceilingGeo, ceiling);
+
       // Left Wall
-      const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), corridorMat);
+      const leftWallGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
+      const leftWall = new THREE.Mesh(leftWallGeo, corridorMat);
       leftWall.rotation.y = Math.PI / 2;
       leftWall.position.x = -half;
       corridor.add(leftWall);
+      addEdges(leftWallGeo, leftWall);
+
       // Right Wall
-      const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), corridorMat);
+      const rightWallGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
+      const rightWall = new THREE.Mesh(rightWallGeo, corridorMat);
       rightWall.rotation.y = -Math.PI / 2;
       rightWall.position.x = half;
       corridor.add(rightWall);
-      // (No back wall so the corridor recedes into the fog)
+      addEdges(rightWallGeo, rightWall);
+
+      // (No back wall => corridor extends into fog)
       scene.add(corridor);
 
-      // Tech Shapes: Floating techy snippets that appear and fade away
-      techShapes = new THREE.Group();
-      scene.add(techShapes);
-      for (let i = 0; i < 10; i++) {
-        let techShape = createTechShape();
-        resetTechShape(techShape);
-        techShapes.add(techShape);
+      /* ===== Tech Shapes Group ===== */
+      techShapesGroup = new THREE.Group();
+      scene.add(techShapesGroup);
+      // Make ~8 “tech shapes” at a time
+      for (let i = 0; i < 8; i++) {
+        const shape = createComplexTechShape();
+        resetTechShape(shape);
+        techShapesGroup.add(shape);
       }
 
-      // Glyphs: Create 30 glyph sprites with lifecycle and interactivity
+      /* ===== Glyph Sprites ===== */
       const glyphLetters = ["Λ", "Δ", "Ω", "ψ", "Σ", "Φ", "Ξ", "Π"];
       for (let i = 0; i < 30; i++) {
-        let letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
-        let sprite = createGlyphSprite(letter);
+        const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
+        const sprite = createGlyphSprite(letter);
+
+        // Random corridor position
         sprite.position.set(
-          (Math.random() - 0.5) * size * 0.6,
-          (Math.random() - 0.5) * size * 0.6,
-          -Math.random() * size * 0.5
+          (Math.random() - 0.5) * CORRIDOR_SIZE * 0.6,
+          (Math.random() - 0.5) * CORRIDOR_SIZE * 0.6,
+          -Math.random() * CORRIDOR_SIZE * 0.5
         );
-        // Set custom properties for interactivity and lifecycle
+
+        // Store extra data for movement
         sprite.userData = {
           basePosition: sprite.position.clone(),
           oscillationSpeed: Math.random() * 0.5 + 0.5,
           velocity: new THREE.Vector3(0, 0, 0),
-          lifetime: Math.random() * 5,
-          maxLifetime: 5 + Math.random() * 5  // glyph lasts between 5 and 10 seconds
+          lifetime: 0,
+          maxLifetime: 5 + Math.random() * 5
         };
         glyphs.push(sprite);
         scene.add(sprite);
       }
 
-      // Listeners for window resize and mouse movement
+      /* ===== Event Listeners ===== */
       window.addEventListener("resize", onWindowResize, false);
       document.addEventListener("mousemove", onDocumentMouseMove, false);
 
-      // Navigation button events for UI overlay
+      // Nav button toggles
       const navButtons = document.querySelectorAll("nav button");
       const sections = ["inventory", "map", "email", "codex", "scanner"];
       navButtons.forEach(btn => {
@@ -235,176 +269,261 @@
       });
     }
 
-    // Create a neon grid texture for the corridor walls/floor/ceiling
-    function createGridTexture() {
-      const size = 512;
+    /* 
+      Creates a “techy” background texture: random lines, arcs, shapes 
+      reminiscent of circuit boards or chemical diagrams. 
+    */
+    function createTechBackgroundTexture(size) {
       const canvas = document.createElement("canvas");
       canvas.width = size;
       canvas.height = size;
       const ctx = canvas.getContext("2d");
+
+      // Fill with a dark base
       ctx.fillStyle = "#0d1b2a";
       ctx.fillRect(0, 0, size, size);
-      ctx.strokeStyle = "rgba(0,204,255,0.4)";
-      ctx.lineWidth = 1;
-      const spacing = 50;
-      for (let x = 0; x <= size; x += spacing) {
+
+      // Draw random “tech lines” in a neon color
+      const lineCount = 20;
+      for (let i = 0; i < lineCount; i++) {
+        ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
+        ctx.lineWidth = Math.random() * 2 + 1;
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, size);
+        // random start
+        let x1 = Math.random() * size;
+        let y1 = Math.random() * size;
+        // random end
+        let x2 = x1 + (Math.random() - 0.5) * 100;
+        let y2 = y1 + (Math.random() - 0.5) * 100;
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
         ctx.stroke();
       }
-      for (let y = 0; y <= size; y += spacing) {
+
+      // Draw random arcs/circles
+      const arcCount = 10;
+      for (let i = 0; i < arcCount; i++) {
+        ctx.strokeStyle = "rgba(0, 204, 255, 0.3)";
+        ctx.lineWidth = Math.random() * 2 + 1;
         ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(size, y);
+        let cx = Math.random() * size;
+        let cy = Math.random() * size;
+        let r = Math.random() * 30 + 10;
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.stroke();
       }
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(10, 10);
-      return texture;
+
+      // Possibly add some “tech text” or random hex strings
+      const textCount = 10;
+      ctx.fillStyle = "rgba(0, 204, 255, 0.25)";
+      ctx.font = "14px monospace";
+      for (let i = 0; i < textCount; i++) {
+        let tx = Math.random() * size;
+        let ty = Math.random() * size;
+        let hexString = Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase();
+        ctx.fillText(hexString, tx, ty);
+      }
+
+      return new THREE.CanvasTexture(canvas);
     }
 
-    // Create a glyph sprite with a given letter
+    /* Helper to add wireframe edges around planes so corridor is visible */
+    function addEdges(geometry, mesh) {
+      const edgesGeo = new THREE.EdgesGeometry(geometry);
+      const edgesMat = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.4 });
+      const edges = new THREE.LineSegments(edgesGeo, edgesMat);
+      mesh.add(edges);
+      corridorEdges.push(edges);
+    }
+
+    /* Create a more complex “tech shape” (lines, arcs, etc.) inside a group. */
+    function createComplexTechShape() {
+      const group = new THREE.Group();
+
+      // 1) A random shape of connected lines
+      const linePoints = [];
+      const segmentCount = 3 + Math.floor(Math.random() * 3); // 3-5 segments
+      let x = 0, y = 0;
+      linePoints.push(new THREE.Vector3(x, y, 0));
+      for (let i = 0; i < segmentCount; i++) {
+        x += (Math.random() - 0.5) * 60;
+        y += (Math.random() - 0.5) * 60;
+        linePoints.push(new THREE.Vector3(x, y, 0));
+      }
+      const lineGeo = new THREE.BufferGeometry().setFromPoints(linePoints);
+      const lineMat = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.8 });
+      const line = new THREE.Line(lineGeo, lineMat);
+      group.add(line);
+
+      // 2) Possibly add small circles along the line
+      linePoints.forEach(pt => {
+        if (Math.random() < 0.5) {
+          const sphereGeo = new THREE.SphereGeometry(3, 8, 8);
+          const sphereMat = new THREE.MeshBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.8 });
+          const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+          sphere.position.copy(pt);
+          group.add(sphere);
+        }
+      });
+
+      // 3) Add an arc or ring somewhere
+      if (Math.random() < 0.7) {
+        const ringGeo = new THREE.RingGeometry(10, 14, 16);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ccff, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.position.set(
+          (Math.random() - 0.5) * 50,
+          (Math.random() - 0.5) * 50,
+          0
+        );
+        ring.rotation.x = Math.random() * Math.PI;
+        ring.rotation.y = Math.random() * Math.PI;
+        group.add(ring);
+      }
+
+      // Lifetime info
+      group.userData = {
+        lifetime: 0,
+        maxLifetime: 6 + Math.random() * 6, // 6-12 seconds
+      };
+      return group;
+    }
+
+    /* Reposition & reset a tech shape when it “expires.” */
+    function resetTechShape(shape) {
+      shape.userData.lifetime = 0;
+      shape.userData.maxLifetime = 6 + Math.random() * 6;
+      // Place shape randomly in corridor
+      shape.position.set(
+        (Math.random() - 0.5) * CORRIDOR_SIZE * 0.6,
+        (Math.random() - 0.5) * CORRIDOR_SIZE * 0.6,
+        -Math.random() * CORRIDOR_SIZE * 0.5
+      );
+      shape.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      // Reset opacities
+      shape.traverse(child => {
+        if (child.material) {
+          child.material.opacity = 0.8;
+        }
+      });
+    }
+
+    /* Create a glyph sprite with the specified letter. */
     function createGlyphSprite(letter) {
       const canvas = document.createElement("canvas");
       canvas.width = 128;
       canvas.height = 128;
       const ctx = canvas.getContext("2d");
+
       ctx.clearRect(0, 0, 128, 128);
       ctx.font = "100px Arial";
       ctx.fillStyle = "rgba(0,204,255,0.8)";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(letter, 64, 64);
+
       const texture = new THREE.CanvasTexture(canvas);
       const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(material);
-      sprite.scale.set(120, 120, 1);
+      sprite.scale.set(100, 100, 1);
       return sprite;
     }
 
-    // Create a tech shape: a crooked line with a circle at its tip
-    function createTechShape() {
-      const group = new THREE.Group();
-      // Create a crooked line
-      const points = [];
-      points.push(new THREE.Vector3(0, 0, 0));
-      points.push(new THREE.Vector3(Math.random() * 100 - 50, Math.random() * 100 - 50, 0));
-      const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.7 });
-      const line = new THREE.Line(geometry, lineMaterial);
-      group.add(line);
-      // Add a circle (small sphere) at the tip
-      const sphereGeo = new THREE.SphereGeometry(5, 16, 16);
-      const sphereMat = new THREE.MeshBasicMaterial({ color: 0x00ccff });
-      const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-      sphere.position.copy(points[1]);
-      group.add(sphere);
-      // Set a lifetime for the tech shape
-      group.userData = {
-        lifetime: 0,
-        maxLifetime: 3 + Math.random() * 3  // between 3 and 6 seconds
-      };
-      return group;
-    }
-
-    // Reset tech shape properties when its lifetime expires
-    function resetTechShape(techShape) {
-      const size = 4000;
-      techShape.position.set(
-        (Math.random() - 0.5) * size * 0.6,
-        (Math.random() - 0.5) * size * 0.6,
-        -Math.random() * size * 0.5
-      );
-      techShape.userData.lifetime = 0;
-      techShape.userData.maxLifetime = 3 + Math.random() * 3;
-      techShape.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      techShape.traverse(child => {
-        if (child.material) {
-          child.material.opacity = 0.7;
-        }
-      });
-    }
-
-    // Handle window resize events
+    /* Window resize handler */
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    // Update mouse coordinates and set target rotations
-    function onDocumentMouseMove(event) {
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    /* Mouse move => update normalized coords & corridor rotation */
+    function onDocumentMouseMove(e) {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
       const maxRotation = 0.1;
       targetRotationY = mouse.x * maxRotation;
       targetRotationX = mouse.y * maxRotation;
     }
 
-    // Animation loop
+    /* Main animation loop */
     function animate() {
       requestAnimationFrame(animate);
 
-      // Smoothly update corridor rotation based on mouse movement
+      // Smooth corridor rotation
       corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
 
-      // Update glyphs with oscillation, repulsion, and lifecycle recycling
+      // Animate glyphs
       glyphs.forEach(sprite => {
-        // Increase lifetime and reset if expired
+        // Lifetime & reset if expired
         sprite.userData.lifetime += 0.016;
         if (sprite.userData.lifetime > sprite.userData.maxLifetime) {
-          const size = 4000;
+          // Reposition
+          sprite.userData.lifetime = 0;
+          sprite.userData.maxLifetime = 5 + Math.random() * 5;
+          const size = CORRIDOR_SIZE;
           sprite.position.set(
             (Math.random() - 0.5) * size * 0.6,
             (Math.random() - 0.5) * size * 0.6,
             -Math.random() * size * 0.5
           );
           sprite.userData.basePosition.copy(sprite.position);
-          sprite.userData.lifetime = 0;
-          sprite.userData.maxLifetime = 5 + Math.random() * 5;
-          sprite.material.opacity = 0.8;
           sprite.userData.velocity.set(0, 0, 0);
         }
-        // Oscillate around the base position
-        let t = Date.now() * 0.001 * sprite.userData.oscillationSpeed;
-        sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 10;
-        sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 10;
-        // Project to screen space for interaction with mouse
-        let pos = sprite.position.clone();
+
+        // Oscillation
+        const t = Date.now() * 0.001 * sprite.userData.oscillationSpeed;
+        const offsetX = Math.sin(t) * 10;
+        const offsetY = Math.cos(t) * 10;
+        sprite.position.x = sprite.userData.basePosition.x + offsetX;
+        sprite.position.y = sprite.userData.basePosition.y + offsetY;
+
+        // Convert glyph position to screen space
+        const pos = sprite.position.clone();
         pos.project(camera);
-        let glyphX = (pos.x * 0.5 + 0.5) * window.innerWidth;
-        let glyphY = (-pos.y * 0.5 + 0.5) * window.innerHeight;
-        let mouseX = (mouse.x + 1) * 0.5 * window.innerWidth;
-        let mouseY = (-mouse.y + 1) * 0.5 * window.innerHeight;
-        let dist = Math.hypot(glyphX - mouseX, glyphY - mouseY);
-        // If mouse is close, apply repulsion force
+        const glyphScreenX = (pos.x * 0.5 + 0.5) * window.innerWidth;
+        const glyphScreenY = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+        // Mouse screen coords
+        const mouseScreenX = (mouse.x + 1) * 0.5 * window.innerWidth;
+        const mouseScreenY = (-mouse.y + 1) * 0.5 * window.innerHeight;
+        const dist = Math.hypot(glyphScreenX - mouseScreenX, glyphScreenY - mouseScreenY);
+
+        // If close to mouse => push away
         if (dist < repulsionDistance) {
-          let dx = glyphX - mouseX;
-          let dy = glyphY - mouseY;
-          let angle = Math.atan2(dy, dx);
-          let repulseX = Math.cos(angle) * repulsionForce;
-          let repulseY = Math.sin(angle) * repulsionForce;
-          sprite.userData.velocity.x += repulseX;
-          sprite.userData.velocity.y += repulseY;
+          const dx = glyphScreenX - mouseScreenX;
+          const dy = glyphScreenY - mouseScreenY;
+          const angle = Math.atan2(dy, dx);
+          const pushX = Math.cos(angle) * repulsionForce;
+          const pushY = Math.sin(angle) * repulsionForce;
+          sprite.userData.velocity.x += pushX;
+          sprite.userData.velocity.y += pushY;
         }
-        // Dampen velocity and update position
-        sprite.userData.velocity.multiplyScalar(0.95);
-        sprite.position.add(sprite.userData.velocity);
+
+        // Apply velocity as 3D offset, dampen velocity
+        sprite.userData.velocity.multiplyScalar(friction);
+        // We'll interpret velocity.x as a shift in X, velocity.y as a shift in Y in 3D
+        sprite.position.x += sprite.userData.velocity.x;
+        sprite.position.y += sprite.userData.velocity.y;
       });
 
-      // Update tech shapes: increase lifetime, fade out, then reset
-      techShapes.children.forEach(shape => {
+      // Animate tech shapes (fade out, then reset)
+      techShapesGroup.children.forEach(shape => {
         shape.userData.lifetime += 0.016;
-        if (shape.userData.lifetime > shape.userData.maxLifetime) {
+        const ratio = shape.userData.lifetime / shape.userData.maxLifetime;
+        // If expired => reset
+        if (ratio >= 1) {
           resetTechShape(shape);
         } else {
-          let fade = 1 - (shape.userData.lifetime / shape.userData.maxLifetime);
+          // Fade out near the end
+          const fade = 1 - ratio;
           shape.traverse(child => {
             if (child.material) {
-              child.material.opacity = fade * 0.7;
+              child.material.opacity = 0.8 * fade;
             }
           });
         }
