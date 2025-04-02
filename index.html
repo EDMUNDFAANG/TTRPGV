@@ -244,7 +244,7 @@
       rightWallMesh.position.x = CORRIDOR_SIZE / 2; // +1250
       corridor.add(rightWallMesh);
 
-      // ========== SCROLLING PLEXUS (Expanded Z Range & Lower Y) ==========
+      // ========== SCROLLING PLEXUS (More connected) ==========
       plexusGroup = createScrollingPlexus();
       // Tilt downward so it feels below the user
       plexusGroup.rotation.x = -0.2;
@@ -303,20 +303,17 @@
     function createScrollingPlexus() {
       const group = new THREE.Group();
 
-      // Less dense
-      const nodeCount = 165;
-      const threshold = 440;
+      // Higher node count & threshold => more connections
+      const nodeCount = 140; // was 100
+      const threshold = 400; // was 250
       const scrollSpeed = 1.0;
 
       // Fill corridor width, keep it lower in Y, large Z range behind & in front
-      // so it appears below the user and flows forward.
       const regionMinX = -1100, regionMaxX = 1100;
       const regionMinY = -1100, regionMaxY = -700;
-      // Start from far behind (-3000) and come up near the camera (1200).
       const regionMinZ = -3000, regionMaxZ = 1200;
 
       const regionWidth = regionMaxX - regionMinX;
-      const regionHeight = regionMaxY - regionMinY;
       const regionDepth = regionMaxZ - regionMinZ;
 
       // Create nodes
