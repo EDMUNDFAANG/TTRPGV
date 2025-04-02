@@ -12,7 +12,7 @@
       margin: 0; 
       padding: 0;
       overflow: hidden;
-      background: #0d1b2a; /* Deep blue background */
+      background: #0d1b2a;
       font-family: Arial, sans-serif;
     }
     canvas {
@@ -118,9 +118,9 @@
   <!-- ===== Three.js Scene ===== -->
   <script>
     let scene, camera, renderer;
-    let corridor;                         // main corridor group
+    let corridor;                         
     let floorMesh, ceilingMesh, leftWallMesh, rightWallMesh;
-    let motionLinesGroup;                 // motion lines on the floor
+    let motionLinesGroup;                 
     let glyphs = [];
 
     const CORRIDOR_SIZE = 2500;
@@ -128,12 +128,12 @@
     const repulsionForce = 1.5;
     const friction = 0.93;
 
-    // Speeds for scrolling
-    const SCROLL_SPEED_FLOOR = 0.0005;   // for floor & ceiling circuit
-    const SCROLL_SPEED_CODE = 0.0005;    // for wall code cascading
-    const MOTION_LINE_SPEED = 1;         // speed of motion lines (forward)
+    // Scrolling speeds
+    const SCROLL_SPEED_FLOOR = 0.0005;
+    const SCROLL_SPEED_CODE = 0.0005;
+    const MOTION_LINE_SPEED = 1;
 
-    // Mouse & rotation
+    // Mouse & rotation targets
     let mouse = new THREE.Vector2(0, 0);
     let targetRotationX = 0, targetRotationY = 0;
 
@@ -144,33 +144,33 @@
     animate();
 
     function init() {
-      /* ===== Scene & Fog ===== */
+      // Scene & Fog
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0d1b2a);
       scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0007);
 
-      /* ===== Camera ===== */
+      // Camera
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
       camera.position.set(0, 0, 1800);
       camera.lookAt(0, 0, 0);
 
-      /* ===== Renderer ===== */
+      // Renderer
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
-      /* ===== Lights ===== */
+      // Lights
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
       scene.add(ambientLight);
       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
       directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
 
-      /* ===== Corridor Group ===== */
+      // Corridor Group
       corridor = new THREE.Group();
       scene.add(corridor);
 
-      // Floor & Ceiling: use circuit texture
+      // Floor & Ceiling use the circuit texture
       floorTexture = createCircuitTexture(512);
       floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
       floorTexture.repeat.set(2, 2);
@@ -179,10 +179,10 @@
       ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
       ceilingTexture.repeat.set(2, 2);
 
-      // Walls: use code texture (tighter & smaller)
+      // Walls use a code texture (tightly packed)
       leftWallTexture = createCodeTexture(512);
       leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping;
-      leftWallTexture.repeat.set(4, 5); // more columns/rows for tighter code
+      leftWallTexture.repeat.set(4, 5);
 
       rightWallTexture = createCodeTexture(512);
       rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping;
@@ -238,53 +238,51 @@
       rightWallMesh.position.x = CORRIDOR_SIZE / 2;
       corridor.add(rightWallMesh);
 
-      // (No back wall so the corridor recedes into fog)
+      // (No back wall)
 
-      /* ===== Motion Lines on the Floor ===== */
+      /* Motion Lines on the Floor */
       motionLinesGroup = new THREE.Group();
       scene.add(motionLinesGroup);
-      // Create 12 motion lines with random (but uniformly computed) lengths
+      // Use a nearly constant length for uniformity
+      const fixedLength = CORRIDOR_SIZE * 0.6; 
       for (let i = 0; i < 12; i++) {
-        const line = createMotionLine();
-        // Random initial z position
+        const line = createMotionLine(fixedLength);
         line.position.z = -Math.random() * CORRIDOR_SIZE;
         motionLinesGroup.add(line);
       }
 
-      /* ===== Glyph Sprites ===== */
-      // Expanded set of symbols (archaic, runes, digits, letters)
+      /* Glyph Sprites (Archaic symbols only, 30 total) */
+      // Only include archaic symbols
       const glyphLetters = [
-        // Greek
-        "Λ","Δ","Ω","ψ","Σ","Φ","Ξ","Π",
-        // Runes
         "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
-        // Misc. symbols
-        "𐎠","𐎣","𐎫","⸮","§","¤","※","✦",
-        // ASCII & Hex
-        "0","1","2","3","4","5","6","7","8","9",
-        "A","B","C","D","E","F"
+        "𐎠","𐎣","𐎫"
       ];
-      // Create 50 glyphs
-      for (let i = 0; i < 50; i++) {
+      // We'll reduce the count to 30
+      for (let i = 0; i < 30; i++) {
         const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
         const sprite = createGlyphSprite(letter);
-        sprite.position.set(
-          (Math.random() - 0.5) * CORRIDOR_SIZE,
-          (Math.random() - 0.5) * CORRIDOR_SIZE,
-          -Math.random() * CORRIDOR_SIZE
-        );
+        // When resetting, 50% chance to spawn on a wall rather than in the center
+        if (Math.random() < 0.5) {
+          spawnGlyphOnWall(sprite);
+        } else {
+          sprite.position.set(
+            (Math.random() - 0.5) * CORRIDOR_SIZE,
+            (Math.random() - 0.5) * CORRIDOR_SIZE,
+            -Math.random() * CORRIDOR_SIZE
+          );
+        }
         sprite.userData = {
           basePosition: sprite.position.clone(),
           oscillationSpeed: Math.random() * 0.5 + 0.5,
           velocity: new THREE.Vector3(0, 0, 0),
           lifetime: 0,
-          maxLifetime: 12 + Math.random() * 12 // 12-24 seconds
+          maxLifetime: 12 + Math.random() * 12
         };
         glyphs.push(sprite);
         scene.add(sprite);
       }
 
-      /* ===== Event Listeners ===== */
+      /* ===== Listeners ===== */
       window.addEventListener("resize", onWindowResize, false);
       document.addEventListener("mousemove", onDocumentMouseMove, false);
 
@@ -304,7 +302,7 @@
       });
     }
 
-    /* Create the circuit texture for floor and ceiling */
+    /* Create a circuit texture for floor & ceiling */
     function createCircuitTexture(size) {
       const canvas = document.createElement("canvas");
       canvas.width = size;
@@ -348,7 +346,7 @@
       return new THREE.CanvasTexture(canvas);
     }
 
-    /* Create the code texture for the walls (tightly packed, small font) */
+    /* Create a code texture for the walls (tightly packed) */
     function createCodeTexture(size) {
       const canvas = document.createElement("canvas");
       canvas.width = size;
@@ -356,19 +354,15 @@
       const ctx = canvas.getContext("2d");
       ctx.fillStyle = "#0d1b2a";
       ctx.fillRect(0, 0, size, size);
-      // Use a smaller, tightly packed font
       ctx.fillStyle = "rgba(0, 204, 255, 0.4)";
       ctx.font = "10px monospace";
-      const columns = 40;  // more columns => tighter
+      const columns = 40;
       const rows = 50;
       const colWidth = size / columns;
       const rowHeight = size / rows;
-      // Expanded set of characters (mix of runes, digits, and letters)
       const codeChars = [
         "ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ",
-        "𐎠","𐎣","𐎫","§","¤","※","✦",
-        "0","1","2","3","4","5","6","7","8","9",
-        "A","B","C","D","E","F"
+        "𐎠","𐎣","𐎫","§","¤","※","✦"
       ];
       for (let c = 0; c < columns; c++) {
         for (let r = 0; r < rows; r++) {
@@ -381,12 +375,8 @@
       return new THREE.CanvasTexture(canvas);
     }
 
-    /* Create a horizontal motion line at floor level with a random length */
-    function createMotionLine() {
-      // Set length in a defined range (ensuring the line is never too short)
-      const minLength = CORRIDOR_SIZE * 0.4;
-      const maxLength = CORRIDOR_SIZE * 0.7;
-      const length = Math.random() * (maxLength - minLength) + minLength;
+    /* Create a motion line of fixed length */
+    function createMotionLine(length) {
       const geometry = new THREE.BufferGeometry();
       const halfLen = length / 2;
       const vertices = new Float32Array([
@@ -397,7 +387,6 @@
       const material = new THREE.LineBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.6 });
       const line = new THREE.Line(geometry, material);
       line.position.y = -CORRIDOR_SIZE / 2 + 1;
-      // Random horizontal offset
       line.position.x = (Math.random() - 0.5) * (CORRIDOR_SIZE * 0.6);
       return line;
     }
@@ -422,6 +411,28 @@
       return sprite;
     }
 
+    /* Spawn a glyph on one of the corridor walls */
+    function spawnGlyphOnWall(sprite) {
+      const wallType = Math.floor(Math.random() * 4); // 0:left, 1:right, 2:floor, 3:ceiling
+      const offset = 50; // small offset from the boundary
+      let x, y;
+      if (wallType === 0) { // left wall
+        x = -CORRIDOR_SIZE / 2 + offset;
+        y = (Math.random() - 0.5) * CORRIDOR_SIZE;
+      } else if (wallType === 1) { // right wall
+        x = CORRIDOR_SIZE / 2 - offset;
+        y = (Math.random() - 0.5) * CORRIDOR_SIZE;
+      } else if (wallType === 2) { // floor
+        y = -CORRIDOR_SIZE / 2 + offset;
+        x = (Math.random() - 0.5) * CORRIDOR_SIZE;
+      } else { // ceiling
+        y = CORRIDOR_SIZE / 2 - offset;
+        x = (Math.random() - 0.5) * CORRIDOR_SIZE;
+      }
+      const z = -Math.random() * CORRIDOR_SIZE;
+      sprite.position.set(x, y, z);
+    }
+
     /* Window & Mouse Handlers */
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -441,27 +452,25 @@
       requestAnimationFrame(animate);
       const time = Date.now() * 0.001;
 
-      // Slight warp
+      // Slight warp and smooth rotation
       corridor.scale.z = 1 + 0.15 * Math.sin(time * 0.2);
       corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
 
-      // Scroll textures
+      // Scroll textures to simulate motion
       floorTexture.offset.y += SCROLL_SPEED_FLOOR;
       ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR;
       leftWallTexture.offset.y += SCROLL_SPEED_CODE;
       rightWallTexture.offset.y += SCROLL_SPEED_CODE;
 
-      // Update motion lines: move forward in z and reset if past camera
+      // Update motion lines: move them forward in z; reset if past camera
       motionLinesGroup.children.forEach(line => {
         line.position.z += MOTION_LINE_SPEED;
         if (line.position.z > 200) {
           line.position.z = -CORRIDOR_SIZE;
-          // Regenerate a new length for consistency
-          const minLength = CORRIDOR_SIZE * 0.4;
-          const maxLength = CORRIDOR_SIZE * 0.7;
-          const newLength = Math.random() * (maxLength - minLength) + minLength;
-          const halfLen = newLength / 2;
+          // Use fixed length for uniformity
+          const fixedLength = CORRIDOR_SIZE * 0.6;
+          const halfLen = fixedLength / 2;
           const posAttr = line.geometry.getAttribute('position');
           posAttr.setXYZ(0, -halfLen, 0, 0);
           posAttr.setXYZ(1, halfLen, 0, 0);
@@ -478,11 +487,16 @@
         if (fade <= 0.05) {
           sprite.userData.lifetime = 0;
           sprite.userData.maxLifetime = 12 + Math.random() * 12;
-          sprite.position.set(
-            (Math.random() - 0.5) * CORRIDOR_SIZE,
-            (Math.random() - 0.5) * CORRIDOR_SIZE,
-            -Math.random() * CORRIDOR_SIZE
-          );
+          // 50% chance to spawn on wall, otherwise uniformly in volume
+          if (Math.random() < 0.5) {
+            spawnGlyphOnWall(sprite);
+          } else {
+            sprite.position.set(
+              (Math.random() - 0.5) * CORRIDOR_SIZE,
+              (Math.random() - 0.5) * CORRIDOR_SIZE,
+              -Math.random() * CORRIDOR_SIZE
+            );
+          }
           sprite.userData.basePosition.copy(sprite.position);
           sprite.userData.velocity.set(0, 0, 0);
           sprite.material.opacity = 1.0;
@@ -510,7 +524,7 @@
         sprite.position.x += sprite.userData.velocity.x;
         sprite.position.y += sprite.userData.velocity.y;
 
-        // Distance-based scaling: larger when close, smaller when far
+        // Scale based on distance: larger when close, smaller when far
         const d = camera.position.distanceTo(sprite.position);
         const minDist = 500, maxDist = 2000;
         const scaleClose = 400, scaleFar = 200;
