@@ -1,24 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Animus Corridor Simulation</title>
-  <!-- Include Three.js from CDN -->
+  <!-- Three.js from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
-    /* Global Reset & Body Styling */
+    /* ===== Reset & Body ===== */
     html, body {
-      margin: 0;
+      margin: 0; 
       padding: 0;
       overflow: hidden;
-      background: #0d1b2a; /* Deep holographic blue background */
-      font-family: Arial, sans-serif;
+      font-family: "Arial", sans-serif;
+      background: #0d1b2a; /* fallback in case WebGL doesn't load */
     }
+
+    /* ===== Canvas ===== */
     canvas {
       display: block;
     }
-    /* Navigation Overlay */
+
+    /* ===== Navigation Bar ===== */
     nav {
       position: fixed;
       top: 0;
@@ -27,6 +30,7 @@
       padding: 10px;
       display: flex;
       justify-content: center;
+      align-items: center;
       z-index: 10;
       box-shadow: 0 0 10px rgba(0,204,255,0.5);
     }
@@ -35,40 +39,60 @@
       border: 2px solid rgba(0,204,255,0.7);
       color: #00ccff;
       margin: 0 10px;
-      padding: 10px 20px;
+      padding: 8px 16px;
       cursor: pointer;
       text-transform: uppercase;
-      transition: background 0.3s, color 0.3s;
+      transition: background 0.3s, color 0.3s, transform 0.3s;
+      outline: none;
     }
     nav button:hover,
     nav button.active {
       background: #00ccff;
       color: #000;
+      transform: scale(1.05);
     }
-    /* Content Sections as Floating Cards */
-    .content-section {
+
+    /* ===== Centered Content Card ===== */
+    .content-card {
       position: fixed;
-      top: 100px;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
-      width: 50%;
+      transform: translate(-50%, -50%);
+      width: 60%;
       max-width: 800px;
       padding: 30px;
       color: #fff;
-      background: rgba(0, 0, 0, 0.2);
+      text-align: center;
+
+      /* Subtle neon border */
+      border: 2px solid rgba(0, 204, 255, 0.3);
       border-radius: 20px;
-      box-shadow: 0 0 30px rgba(0,204,255,0.5);
+      box-shadow: 0 0 20px rgba(0, 204, 255, 0.2);
+
+      /* Frosted glass effect (where supported) */
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(8px);
+      
       z-index: 10;
-      overflow: auto;
+    }
+    .content-card h1 {
+      font-size: 2em;
+      margin-bottom: 0.5em;
+      color: #00ccff;
+    }
+    .content-card p {
+      font-size: 1.1em;
+      line-height: 1.6em;
+    }
+    /* Hide all except "Inventory" by default, or you can adapt to your needs */
+    #map, #email, #codex, #scanner {
       display: none;
     }
-    .content-section.active {
-      display: block;
-    }
+
   </style>
 </head>
 <body>
-  <!-- Navigation Overlay -->
+  <!-- ===== Navigation ===== -->
   <nav>
     <button data-section="inventory" class="active">Inventory</button>
     <button data-section="map">Map</button>
@@ -76,158 +100,185 @@
     <button data-section="codex">Codex</button>
     <button data-section="scanner">Scanner</button>
   </nav>
-  <!-- Content Sections -->
-  <div id="inventory" class="content-section active">
+
+  <!-- ===== Content Cards ===== -->
+  <div id="inventory" class="content-card">
     <h1>Inventory</h1>
     <p>Inventory details go here.</p>
   </div>
-  <div id="map" class="content-section">
+  <div id="map" class="content-card">
     <h1>Map</h1>
     <p>Map details go here.</p>
   </div>
-  <div id="email" class="content-section">
+  <div id="email" class="content-card">
     <h1>Email</h1>
     <p>Email details go here.</p>
   </div>
-  <div id="codex" class="content-section">
+  <div id="codex" class="content-card">
     <h1>Codex</h1>
     <p>Codex details go here.</p>
   </div>
-  <div id="scanner" class="content-section">
+  <div id="scanner" class="content-card">
     <h1>Scanner</h1>
     <p>Scanner details go here.</p>
   </div>
 
-  <!-- Three.js Scene -->
+  <!-- ===== Three.js Scene ===== -->
   <script>
-    let scene, camera, renderer, corridor;
+    let scene, camera, renderer;
+    let corridor;
     let glyphs = [];
     let mouse = new THREE.Vector2(0, 0);
     let targetRotationX = 0, targetRotationY = 0;
+
+    // For glyph interaction
+    const raycaster = new THREE.Raycaster();
 
     init();
     animate();
 
     function init() {
-      // Create scene with a deep holographic blue background and matching fog
+      // Scene & Fog
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0d1b2a);
-      scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0003);
+      // Increase density for heavier fog
+      scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0012);
 
-      // Set up perspective camera
-      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
-      camera.position.set(0, 0, 500);
+      // Camera
+      camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        1,
+        5000
+      );
+      camera.position.set(0, 0, 800);
 
-      // Set up renderer with antialiasing
+      // Renderer
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
-      // Add ambient and directional lights for realistic shading
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      // Lights
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
       scene.add(ambientLight);
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-      directionalLight.position.set(1, 1, 1);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+      directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
 
-      // Build corridor as an open box using five large planes
+      // Corridor (open-ended)
       corridor = new THREE.Group();
-      const gridTexture = createGridTexture();
-      const planeMaterial = new THREE.MeshPhongMaterial({
-        map: gridTexture,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.9
-      });
       const size = 4000;
       const half = size / 2;
 
+      // Corridor material: neon grid
+      const gridTexture = createGridTexture();
+      const corridorMat = new THREE.MeshPhongMaterial({
+        map: gridTexture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.5
+      });
+
       // Floor
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
+      const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(size, size),
+        corridorMat
+      );
       floor.rotation.x = -Math.PI / 2;
       floor.position.y = -half;
       corridor.add(floor);
 
       // Ceiling
-      const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
+      const ceiling = new THREE.Mesh(
+        new THREE.PlaneGeometry(size, size),
+        corridorMat
+      );
       ceiling.rotation.x = Math.PI / 2;
       ceiling.position.y = half;
       corridor.add(ceiling);
 
       // Left Wall
-      const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
+      const leftWall = new THREE.Mesh(
+        new THREE.PlaneGeometry(size, size),
+        corridorMat
+      );
       leftWall.rotation.y = Math.PI / 2;
       leftWall.position.x = -half;
       corridor.add(leftWall);
 
       // Right Wall
-      const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
+      const rightWall = new THREE.Mesh(
+        new THREE.PlaneGeometry(size, size),
+        corridorMat
+      );
       rightWall.rotation.y = -Math.PI / 2;
       rightWall.position.x = half;
       corridor.add(rightWall);
 
-      // Back Wall
-      const backWall = new THREE.Mesh(new THREE.PlaneGeometry(size, size), planeMaterial);
-      backWall.rotation.y = Math.PI;
-      backWall.position.z = -half;
-      corridor.add(backWall);
-
+      // (No Back Wall) => extends into fog
       scene.add(corridor);
 
-      // Create multiple floating glyphs that gently oscillate
+      // Floating glyphs
       const glyphLetters = ["Λ", "Δ", "Ω", "ψ", "Σ", "Φ", "Ξ", "Π"];
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 25; i++) {
         const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
         const sprite = createGlyphSprite(letter);
-        // Position glyph randomly within a portion of the corridor
+        // random position in the corridor
         sprite.position.set(
           (Math.random() - 0.5) * size * 0.6,
           (Math.random() - 0.5) * size * 0.6,
           -Math.random() * size * 0.5
         );
-        // Save initial position and assign a drift speed
         sprite.userData = {
           basePosition: sprite.position.clone(),
-          speed: Math.random() * 0.5 + 0.5
+          speed: Math.random() * 0.5 + 0.5,
+          baseScale: sprite.scale.clone()
         };
         scene.add(sprite);
         glyphs.push(sprite);
       }
 
-      // Event listeners for window resize and mouse movement
-      window.addEventListener('resize', onWindowResize, false);
-      document.addEventListener('mousemove', onDocumentMouseMove, false);
-      
-      // Navigation button events for UI overlay
-      const navButtons = document.querySelectorAll('nav button');
-      const contentSections = document.querySelectorAll('.content-section');
-      navButtons.forEach(button => {
-        button.addEventListener('click', () => {
-          const sectionId = button.getAttribute('data-section');
-          contentSections.forEach(section => {
-            section.classList.toggle('active', section.id === sectionId);
+      // Listeners
+      window.addEventListener("resize", onWindowResize, false);
+      document.addEventListener("mousemove", onDocumentMouseMove, false);
+
+      // Nav button toggles
+      const navButtons = document.querySelectorAll("nav button");
+      const sections = ["inventory","map","email","codex","scanner"];
+      navButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const sectionId = btn.getAttribute("data-section");
+          // Toggle content
+          sections.forEach(s => {
+            const el = document.getElementById(s);
+            if(s === sectionId) {
+              el.style.display = "block";
+            } else {
+              el.style.display = "none";
+            }
           });
-          navButtons.forEach(btn => {
-            btn.classList.toggle('active', btn === button);
-          });
+          // Toggle active button
+          navButtons.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
         });
       });
     }
 
-    // Create a canvas texture for the grid with neon blue lines on a dark blue background
+    /* Create the neon grid texture for the corridor walls/floor/ceiling */
     function createGridTexture() {
       const size = 512;
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = size;
       canvas.height = size;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
 
-      // Fill with deep holographic blue background
+      // Fill background
       ctx.fillStyle = "#0d1b2a";
       ctx.fillRect(0, 0, size, size);
 
-      // Draw thin neon blue grid lines
-      ctx.strokeStyle = "rgba(0,204,255,0.9)";
+      // Neon lines
+      ctx.strokeStyle = "rgba(0,204,255,0.4)";
       ctx.lineWidth = 1;
       const spacing = 50;
       for (let x = 0; x <= size; x += spacing) {
@@ -244,57 +295,86 @@
       }
       const texture = new THREE.CanvasTexture(canvas);
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(40, 40);
+      // Repeating to make the grid denser
+      texture.repeat.set(10, 10);
       return texture;
     }
 
-    // Create a sprite for a glyph (floating symbol) using a canvas texture
+    /* Create a floating glyph (sprite) */
     function createGlyphSprite(letter) {
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = 128;
       canvas.height = 128;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
 
+      // Clear & set text style
+      ctx.clearRect(0, 0, 128, 128);
       ctx.font = "100px Arial";
-      ctx.fillStyle = "rgba(0,204,255,0.9)";
+      ctx.fillStyle = "rgba(0,204,255,0.8)";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(letter, 64, 64);
 
       const texture = new THREE.CanvasTexture(canvas);
-      const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const spriteMaterial = new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false
+      });
       const sprite = new THREE.Sprite(spriteMaterial);
-      sprite.scale.set(150, 150, 1);
+      sprite.scale.set(120, 120, 1);
       return sprite;
     }
 
+    /* Handle window resizing */
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+    /* Track mouse movement for corridor rotation + glyph hover effect */
     function onDocumentMouseMove(event) {
-      // Normalize mouse coordinates to range [-1, 1]
+      // Normalize mouse coordinates to [-1,1]
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-      // Set target rotations based on mouse position
+
+      // Corridor rotation
       const maxRotation = 0.1; // in radians
       targetRotationY = mouse.x * maxRotation;
       targetRotationX = mouse.y * maxRotation;
     }
 
+    /* Animate the scene */
     function animate() {
       requestAnimationFrame(animate);
-      // Smoothly update corridor rotation based on mouse input
+
+      // Smooth corridor rotation
       corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
       corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
 
-      // Animate glyphs with gentle oscillation
+      // Update glyph positions & mild "hover" effect
       glyphs.forEach(sprite => {
+        // Floating (oscillation)
         const t = Date.now() * 0.001 * sprite.userData.speed;
         sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 10;
         sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 10;
+
+        // Project glyph position to screen space
+        const pos = sprite.position.clone();
+        pos.project(camera);
+        // Convert to pixel coordinates
+        const glyphX = (pos.x * 0.5 + 0.5) * window.innerWidth;
+        const glyphY = (pos.y * -0.5 + 0.5) * window.innerHeight;
+
+        // Distance from mouse
+        const dist = Math.hypot(glyphX - ( (mouse.x+1)*0.5*window.innerWidth ), glyphY - ( (-mouse.y+1)*0.5*window.innerHeight ));
+        // If cursor is within ~100px, scale up a bit
+        if (dist < 100) {
+          sprite.scale.lerp(new THREE.Vector3(150,150,1), 0.2);
+        } else {
+          sprite.scale.lerp(sprite.userData.baseScale, 0.2);
+        }
       });
 
       renderer.render(scene, camera);
