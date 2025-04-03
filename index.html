@@ -3,520 +3,523 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Animus Corridor Simulation v2.0</title>
+  <title>Animus Corridor Simulation</title>
   <!-- Load Orbitron font -->
-  <link href="https://fonts.googleapis.com/css?family=Orbitron:400,700" rel="stylesheet"> <!-- Added bold weight -->
+  <link href="https://fonts.googleapis.com/css?family=Orbitron" rel="stylesheet">
   <!-- Three.js from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     :root {
-      --bg-color: #050a14; /* Deeper blue/black */
-      --accent-color: #00e5ff; /* Brighter cyan */
-      --accent-glow: rgba(0, 229, 255, 0.7);
-      --panel-bg: rgba(10, 25, 40, 0.6); /* Slightly darker, more opaque panel */
-      --text-color: rgba(200, 240, 255, 0.9); /* Lighter blue text */
-      --border-color: rgba(0, 229, 255, 0.25);
-      --hover-border-color: rgba(0, 229, 255, 0.6);
-      --active-bg: rgba(0, 229, 255, 0.15);
-      --darker-blue: #02040a;
-      --lighter-accent: rgba(0, 229, 255, 0.1);
-      --highlight-glow: 0 0 8px var(--accent-glow), 0 0 12px var(--accent-color); /* Stronger glow */
-      --smooth-ease: cubic-bezier(0.4, 0, 0.2, 1); /* Smoother easing */
+      --bg-color: #0d1b2a;
+      --accent-color: #00ccff;
+      --panel-bg: rgba(0, 0, 0, 0.4); /* Slightly less transparent */
+      --text-color: rgba(0, 204, 255, 0.9);
+      --border-color: rgba(0,204,255,0.3);
+      --hover-border-color: rgba(0,204,255,0.6);
+      --active-bg: rgba(0,204,255,0.2);
+      --darker-blue: #0a1826; /* Slightly darker blue for bg gradient */
+      --lighter-accent: rgba(0, 204, 255, 0.2); /* Lighter accent for bg gradient */
     }
     /* ===== Reset & Base Styles ===== */
-    html { height: 100%; }
+    html {
+        height: 100%; /* Ensure html takes full height */
+    }
     body {
-      margin: 0; padding: 0; min-height: 100%;
+      margin: 0;
+      padding: 0;
+      min-height: 100%; /* Ensure body takes at least full height */
       overflow: hidden;
       background: var(--bg-color);
       font-family: 'Orbitron', sans-serif;
-      color: var(--text-color);
-      position: relative;
-       /* Subtle Scanline Effect */
-       &::after {
-          content: '';
-          position: fixed;
-          top: 0; left: 0; right: 0; bottom: 0;
-          width: 100%; height: 100%;
-          background: repeating-linear-gradient(
-              transparent,
-              transparent 2px,
-              rgba(10, 25, 40, 0.1) 3px, /* Match panel darkness */
-              rgba(10, 25, 40, 0.1) 4px
-          );
-          background-size: 100% 4px;
-          opacity: 0.4; /* Subtle */
-          z-index: 500; /* Above most things but potentially below modals if needed */
-          pointer-events: none;
-          animation: slowScan 30s linear infinite;
-       }
-    }
-    @keyframes slowScan {
-        0% { background-position-y: 0; }
-        100% { background-position-y: -20px; } /* Adjust speed */
+      color: var(--text-color); /* Default text color */
+      position: relative; /* Needed for pseudo-element positioning */
     }
 
-    /* ===== Pre-Login Animated Background ===== */
+    /* ===== NEW: Pre-Login Animated Background ===== */
     body::before {
         content: "";
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        z-index: 1;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 1; /* Behind login panel (z-index 400) but above default bg */
         background:
-            radial-gradient(ellipse at 15% 25%, var(--lighter-accent) 0%, transparent 50%),
-            radial-gradient(ellipse at 85% 75%, var(--accent-color) 3%, transparent 60%),
-            linear-gradient(160deg, var(--darker-blue) 0%, var(--bg-color) 80%);
-        background-size: 250% 250%;
-        opacity: 0.7; /* Slightly more visible */
-        animation: subtleGalaxyShift 60s ease-in-out infinite; /* Slower, smoother */
-        transition: opacity 0.8s var(--smooth-ease); /* Longer fade */
-        pointer-events: none;
+            radial-gradient(circle at 20% 30%, var(--lighter-accent) 0%, transparent 40%),
+            radial-gradient(circle at 80% 70%, var(--accent-color) 5%, transparent 50%),
+            linear-gradient(135deg, var(--darker-blue) 0%, var(--bg-color) 70%);
+        background-size: 200% 200%; /* Larger size to allow smooth animation */
+        opacity: 0.6; /* Initial subtle opacity */
+        animation: subtleGalaxyShift 45s linear infinite;
+        transition: opacity 0.6s ease-out; /* Match login panel fade duration */
+        pointer-events: none; /* Don't interfere with clicks */
     }
-    @keyframes subtleGalaxyShift { /* Smoother movement */
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
+
+    @keyframes subtleGalaxyShift {
+        0% { background-position: 0% 0%; }
+        25% { background-position: 30% 50%; }
+        50% { background-position: 70% 100%; }
+        75% { background-position: 40% 50%; }
+        100% { background-position: 0% 0%; }
     }
-    body.hide-login-bg::before { opacity: 0; }
+
+    /* Hide the pseudo-element when login is proceeding */
+    body.hide-login-bg::before {
+        opacity: 0;
+    }
 
 
-    canvas { display: block; position: fixed; top: 0; left: 0; z-index: -1; }
+    canvas {
+      display: block;
+      /* Styles for the main Three.js canvas */
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1; /* Put it in the very background AFTER login */
+    }
 
     /* ===== Holographic Text Style ===== */
     .holo-text {
       font-family: 'Orbitron', sans-serif;
-      font-weight: normal; /* Use normal weight more often */
+      font-weight: bold;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      text-shadow: 0 0 5px var(--accent-glow), 0 0 8px var(--accent-color); /* Refined glow */
+      text-shadow: 0 0 3px rgba(0,204,255,0.8), 0 0 6px rgba(0,204,255,0.5);
       color: var(--text-color);
       opacity: 0.95;
-      letter-spacing: 0.5px; /* Slight spacing */
     }
-    h1.holo-text, h2.holo-text { font-weight: 700; letter-spacing: 1px; } /* Bold for headers */
 
     /* ===== Login Panel Styling & Transition ===== */
     #loginPanel {
-      position: fixed; top: 50%; left: 50%;
-      transform: translate(-50%, -50%) scale(1);
-      width: 320px; padding: 35px;
-      border: 1px solid var(--border-color); /* Thinner border */
-      border-radius: 5px; /* Sharper corners */
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(1); /* Start at full scale */
+      width: 300px;
+      padding: 30px;
+      border: 2px solid var(--border-color);
+      border-radius: 20px;
       background: var(--panel-bg);
-      backdrop-filter: blur(10px) saturate(120%); /* Add saturation */
-      text-align: center; z-index: 400;
+      backdrop-filter: blur(8px);
+      text-align: center;
+      z-index: 400; /* Above the ::before background */
       opacity: 1;
-      box-shadow: 0 0 25px rgba(0, 229, 255, 0.1); /* Subtle outer glow */
-      transition: opacity 0.7s var(--smooth-ease), transform 0.7s var(--smooth-ease), filter 0.7s var(--smooth-ease); /* Smoother transition */
-      pointer-events: auto;
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out; /* Transition opacity and transform */
+      pointer-events: auto; /* Initially interactive */
     }
     #loginPanel.hidden {
         opacity: 0;
-        transform: translate(-50%, -45%) scale(0.95); /* Fade upwards slightly */
-        filter: blur(5px); /* Blur out */
-        pointer-events: none;
+        transform: translate(-50%, -50%) scale(0.8); /* Scale down on hide */
+        pointer-events: none; /* Not interactive when hidden */
     }
 
     #loginPanel input {
-      width: 90%; margin: 12px 0; padding: 10px;
-      border: 1px solid var(--accent-color); border-radius: 3px;
-      background: rgba(0, 0, 0, 0.3); color: var(--accent-color);
-      font-family: 'Orbitron', sans-serif; font-size: 1em; text-align: center;
-      transition: box-shadow 0.3s var(--smooth-ease), background 0.3s var(--smooth-ease);
-    }
-    #loginPanel input:focus {
-        outline: none;
-        box-shadow: 0 0 10px var(--accent-glow);
-        background: rgba(0, 20, 30, 0.5);
+      width: 90%;
+      margin: 10px 0;
+      padding: 8px;
+      border: 1px solid var(--accent-color);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--accent-color);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1em;
+      text-align: center;
     }
     #loginPanel button {
-      margin-top: 15px; padding: 10px 20px;
-      border: 1px solid var(--accent-color); border-radius: 3px;
-      background: transparent; color: var(--accent-color); cursor: pointer;
-      transition: background 0.3s var(--smooth-ease), color 0.3s var(--smooth-ease), box-shadow 0.3s var(--smooth-ease), transform 0.2s ease-out;
-      font-family: 'Orbitron', sans-serif; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 1px;
+      margin-top: 10px;
+      padding: 8px 16px;
+      border: 2px solid var(--accent-color);
+      background: transparent;
+      color: var(--accent-color);
+      cursor: pointer;
+      transition: background 0.3s;
+      font-family: 'Orbitron', sans-serif;
     }
     #loginPanel button:hover {
-      background: var(--active-bg); color: #fff;
-      box-shadow: var(--highlight-glow);
-      transform: scale(1.03);
+      background: var(--active-bg);
     }
-     #loginPanel button:active { transform: scale(0.98); }
 
     /* ===== Main Content (hidden until login) ===== */
     #mainContent {
-      display: block; opacity: 0;
-      transition: opacity 1.8s var(--smooth-ease); /* Slower, smoother fade */
-      transition-delay: 0.6s; /* Adjusted delay */
-      pointer-events: none;
+      display: block; /* Keep as block, control visibility with opacity */
+      opacity: 0; /* Start hidden */
+      transition: opacity 1.5s ease-in; /* Fade in */
+      transition-delay: 0.5s; /* Delay fade-in until login panel fades out */
+      pointer-events: none; /* Not interactive until faded in */
     }
-    #mainContent.visible { opacity: 1; pointer-events: auto; }
+    #mainContent.visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
 
     /* ===== Intro Message Overlay ===== */
     #introMessage {
-      position: fixed; top: 50%; left: 50%;
+      position: fixed;
+      top: 50%;
+      left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 2.8em; z-index: 300; opacity: 0;
-      animation: introAnim 4s var(--smooth-ease) forwards; /* Longer, smoother anim */
-      animation-delay: 0.9s; /* Adjusted delay */
-      white-space: nowrap; /* Prevent wrapping */
+      font-size: 2.5em;
+      z-index: 300;
+      opacity: 0;
+      animation: introAnim 3s forwards;
+      animation-delay: 0.8s; /* Delay slightly more to follow login fade */
     }
-    @keyframes introAnim { /* Smoother scale and fade */
-      0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.8); filter: blur(8px); }
-      30%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05); filter: blur(0px); }
-      80%  { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: blur(0px); }
-      100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); filter: blur(8px); }
+    @keyframes introAnim {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+      40% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1); /* Slightly less jump */
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1);
+      }
     }
 
     /* ===== Navigation Bar ===== */
     nav {
-      position: fixed; top: 0; /* Stick to top */
+      position: fixed;
+      top: 20px;
       width: 100%;
-      display: flex; justify-content: center; align-items: center;
-      z-index: 200; background: rgba(5, 10, 20, 0.7); /* Darker, less blue */
-      padding: 12px 0; /* Vertical padding */
-      box-shadow: 0 2px 15px rgba(0, 229, 255, 0.2); /* Subtle glow below */
-      backdrop-filter: blur(8px);
-      opacity: 0; animation: navFadeIn 1.2s var(--smooth-ease) forwards;
-      animation-delay: 2.8s; /* Adjusted delay */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 200;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      box-shadow: 0 0 10px rgba(0,204,255,0.5);
+      backdrop-filter: blur(5px);
+      opacity: 0; /* Start hidden */
+      animation: navFadeIn 1s forwards;
+      animation-delay: 2.5s; /* Delay more to sync with mainContent fade */
     }
     @keyframes navFadeIn {
-      from { opacity: 0; transform: translateY(-100%); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
     nav button {
       background: transparent;
-      border: none; /* Remove border */
-      border-bottom: 2px solid transparent; /* Underline instead */
-      margin: 0 15px; padding: 10px 5px; /* Adjust padding */
-      cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
-      transition: color 0.3s var(--smooth-ease), border-color 0.3s var(--smooth-ease), text-shadow 0.3s var(--smooth-ease);
-      outline: none; opacity: 0; transform: translateY(-20px);
-      animation: buttonFadeIn 0.8s var(--smooth-ease) forwards;
-      color: var(--text-color); /* Use base text color */
-      font-size: 0.9em; font-weight: 700;
+      border: 2px solid var(--accent-color);
+      margin: 0 10px;
+      padding: 8px 16px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.3s, color 0.3s, transform 0.3s, border-color 0.3s; /* Added border-color transition */
+      outline: none;
+      opacity: 0; /* Start hidden */
+      transform: translateY(-20px);
+      animation: buttonFadeIn 0.8s forwards;
+      color: var(--text-color); /* Inherit text color */
     }
-    /* Staggered Button Animation Delays */
-    nav button[data-section="inventory"] { animation-delay: 3.0s; }
-    nav button[data-section="map"] { animation-delay: 3.15s; }
-    nav button[data-section="email"] { animation-delay: 3.3s; }
-    nav button[data-section="codex"] { animation-delay: 3.45s; }
-    nav button[data-section="scanner"] { animation-delay: 3.6s; }
-    nav button[data-section="vitals"] { animation-delay: 3.75s; }
+    /* Adjust delays to follow nav fade-in */
+    nav button[data-section="inventory"] { animation-delay: 2.7s; }
+    nav button[data-section="map"] { animation-delay: 2.9s; }
+    nav button[data-section="email"] { animation-delay: 3.1s; }
+    nav button[data-section="codex"] { animation-delay: 3.3s; }
+    nav button[data-section="scanner"] { animation-delay: 3.5s; }
+    nav button[data-section="vitals"] { animation-delay: 3.7s; }
 
     @keyframes buttonFadeIn {
       from { opacity: 0; transform: translateY(-20px); }
       to { opacity: 1; transform: translateY(0); }
     }
     nav button:hover {
-      color: #fff; /* Brighter white on hover */
-      border-color: var(--hover-border-color);
-      text-shadow: 0 0 8px var(--accent-glow);
+      background: var(--active-bg);
+      color: #FFF; /* Brighter text on hover */
+      border-color: var(--hover-border-color); /* Subtle highlight on hover */
+      transform: scale(1.05) translateY(0);
     }
      nav button.active {
-      color: var(--accent-color); /* Accent color when active */
-      border-color: var(--accent-color);
-      text-shadow: var(--highlight-glow);
+      background: var(--active-bg);
+      color: #FFF; /* Brighter text on active */
+      border-color: var(--hover-border-color); /* Make active border brighter */
+      transform: scale(1.05) translateY(0); /* Ensure scale persists when active */
+      box-shadow: 0 0 8px var(--accent-color); /* Add glow to active button */
     }
 
     /* ===== Content Panels Wrapper ===== */
-    #contentWrapper { /* No specific styles needed now */ }
+    #contentWrapper {
+      /* Styles for the wrapper if needed */
+    }
 
-    /* ===== Floating UI Panels (Content Cards & Inventory) ===== */
-    .content-card, #inventoryContainer {
-      position: fixed; top: 50%; left: 50%;
-      /* transform set in inactive/active states */
-      border: 1px solid var(--border-color); /* Thinner border */
-      border-radius: 4px; /* Sharper */
-      box-shadow: 0 0 30px rgba(0, 229, 255, 0.15), inset 0 0 15px rgba(0, 229, 255, 0.05); /* Outer and inner glow */
+    /* ===== Floating UI Panels ===== */
+    .content-card {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      width: 70%;
+      max-width: 900px;
+      height: 60vh;
+      max-height: 600px;
+      padding: 25px;
+      border: 2px solid var(--border-color);
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,204,255,0.2);
       background: var(--panel-bg);
-      backdrop-filter: blur(12px) saturate(130%);
+      backdrop-filter: blur(10px);
       z-index: 100;
-      opacity: 0; pointer-events: none;
-      /* Use filter for smoother hide animation */
-      filter: blur(5px);
-      transform: translate(-50%, -50%) scale(0.98);
-      transition: opacity 0.6s var(--smooth-ease), transform 0.6s var(--smooth-ease), filter 0.6s var(--smooth-ease);
-      display: flex; flex-direction: column;
-      overflow: hidden; /* Ensure content respects border-radius */
-
-      /* Subtle Animated Background Grid */
-      background-image: linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
-      background-size: 30px 30px; /* Grid size */
-      animation: slowGridPan 40s linear infinite;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
-    @keyframes slowGridPan {
-      0% { background-position: 0 0; }
-      100% { background-position: 60px 60px; } /* Adjust distance for speed */
-    }
-
-    .content-card.active, #inventoryContainer.active {
-      opacity: 1; pointer-events: auto;
-      filter: blur(0px);
+    .content-card.active {
+      opacity: 1;
+      pointer-events: auto;
       transform: translate(-50%, -50%) scale(1);
-      animation: panelActivate 0.6s var(--smooth-ease) forwards;
+      animation: panelActivate 0.5s ease-out forwards;
     }
-    /* Keep panelActivate simple, transition handles the main effect */
     @keyframes panelActivate {
-        from { /* Start state already defined in inactive style */ }
+        from { transform: translate(-50%, -50%) scale(0.98); }
         to { transform: translate(-50%, -50%) scale(1); }
     }
-
-    /* Specific Panel Dimensions */
-    .content-card { width: 75%; max-width: 950px; height: 65vh; max-height: 650px; padding: 25px; }
-    #inventoryContainer { width: 850px; height: 600px; padding: 20px; flex-direction: row; gap: 20px; z-index: 150; } /* Keep row layout */
-
-
     .content-card h1 {
-      margin: 0 0 20px 0; padding-bottom: 15px;
+      margin: 0 0 15px 0;
+      padding-bottom: 10px;
       border-bottom: 1px solid var(--border-color);
-      text-align: center; flex-shrink: 0; font-size: 1.6em; /* Slightly larger */
+      text-align: center;
+      flex-shrink: 0;
     }
-    .content-card .panel-content { flex-grow: 1; overflow-y: auto; padding-right: 15px; }
-
-     /* Refined Custom Scrollbar */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 0px; } /* No radius */
-    ::-webkit-scrollbar-thumb {
-        background-color: var(--accent-color); border-radius: 0px; /* No radius */
-        border: 2px solid var(--panel-bg);
-        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+    .content-card .panel-content {
+       flex-grow: 1;
+       overflow-y: auto;
+       padding-right: 10px; /* Space for scrollbar */
     }
-    ::-webkit-scrollbar-thumb:hover { background-color: #fff; }
-
+     /* Custom Scrollbar */
+    .panel-content::-webkit-scrollbar { width: 8px; }
+    .panel-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+    .panel-content::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 4px; border: 2px solid var(--panel-bg); }
 
     /* ===== Inventory Container Styling ===== */
-   .inventory-grid {
-      flex: 2; display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
-      grid-auto-rows: 95px; gap: 12px; padding: 15px;
-      border: 1px solid rgba(0, 229, 255, 0.1); border-radius: 3px;
-      overflow-y: auto; align-content: start;
-      background: rgba(0,0,0,0.2); /* Slight background for grid area */
+   #inventoryContainer {
+      /* position, dimensions, styling are fine */
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      z-index: 150;
+      width: 800px; height: 550px; padding: 20px;
+      background: var(--panel-bg); backdrop-filter: blur(10px);
+      border: 2px solid var(--border-color); border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0,204,255,0.2);
+      display: flex; /* Use flex always for layout */
+      flex-direction: row; gap: 20px;
+      opacity: 0; /* Controlled by .active class */
+      pointer-events: none; /* Controlled by .active class */
+      transition: opacity 0.5s ease, transform 0.5s ease;
+   }
+   #inventoryContainer.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+      animation: panelActivate 0.5s ease-out forwards;
     }
+
+    .inventory-grid {
+      flex: 2; display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      grid-auto-rows: 90px; gap: 10px; padding: 10px;
+      border: 1px solid var(--border-color); border-radius: 8px;
+      overflow-y: auto; align-content: start;
+    }
+    /* Scrollbar for Inventory Grid */
+    .inventory-grid::-webkit-scrollbar { width: 6px; }
+    .inventory-grid::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    .inventory-grid::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
 
     .inventory-slot {
       width: 100%; height: 100%;
-      border: 1px solid var(--border-color); border-radius: 3px;
-      background: rgba(0, 10, 20, 0.4); /* Darker slot background */
-      display: flex; align-items: center; justify-content: center;
-      transition: border-color 0.3s var(--smooth-ease), background-color 0.3s var(--smooth-ease), box-shadow 0.3s var(--smooth-ease);
+      border: 2px solid var(--border-color); border-radius: 8px;
+      background: rgba(0,0,0,0.3); display: flex;
+      align-items: center; justify-content: center;
+      transition: border-color 0.3s, background-color 0.3s, box-shadow 0.3s; /* Added box-shadow */
       cursor: pointer; position: relative;
-      overflow: hidden; /* For potential inner effects */
-      box-shadow: inset 0 0 6px rgba(0,0,0,0.4); /* Inner shadow for depth */
-    }
-    .inventory-slot::before { /* Subtle highlight effect */
-        content: '';
-        position: absolute;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: radial-gradient(circle at center, rgba(0, 229, 255, 0.15) 0%, transparent 70%);
-        opacity: 0; transform: scale(0.8);
-        transition: opacity 0.3s var(--smooth-ease), transform 0.3s var(--smooth-ease);
-    }
-    .inventory-slot:hover::before, .inventory-slot.selected::before {
-        opacity: 1;
-        transform: scale(1);
     }
     .inventory-slot:hover {
       border-color: var(--hover-border-color);
-      background-color: rgba(0, 229, 255, 0.05);
+      background-color: rgba(0, 204, 255, 0.1);
     }
-    .inventory-slot.selected {
+    .inventory-slot.selected { /* Style for selected slot */
         border-color: var(--accent-color);
-        background-color: rgba(0, 229, 255, 0.08);
-        box-shadow: inset 0 0 8px rgba(0,0,0,0.4), 0 0 10px var(--accent-glow); /* Inner and outer glow */
+        background-color: rgba(0, 204, 255, 0.15);
+        box-shadow: 0 0 8px var(--accent-color); /* Glow effect */
     }
     .inventory-slot img {
-      max-width: 80%; max-height: 80%; object-fit: contain;
-      filter: drop-shadow(0 0 3px rgba(0, 229, 255, 0.3)); /* Slight glow on item */
-      transition: transform 0.3s var(--smooth-ease);
+      max-width: 85%; max-height: 85%; object-fit: contain;
     }
-    .inventory-slot:hover img { transform: scale(1.05); }
 
     /* Item Info Panel Styling */
     .item-info {
-      flex: 1; border: 1px solid rgba(0, 229, 255, 0.1); border-radius: 3px;
-      background: rgba(0,0,0,0.15); padding: 20px; display: flex;
+      flex: 1; border: 1px solid var(--border-color); border-radius: 8px;
+      background: rgba(0,0,0,0.1); padding: 15px; display: flex;
       flex-direction: column; justify-content: space-between;
     }
-    .item-details { flex-grow: 1; overflow-y: auto; margin-bottom: 20px; padding-right: 10px;}
-    .item-info h2 { margin: 0 0 15px 0; font-size: 1.4em; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; font-weight: 700; }
-    .item-info p { font-size: 1em; line-height: 1.6; color: var(--text-color); }
-    .item-actions { flex-shrink: 0; text-align: right; padding-top: 15px; border-top: 1px solid rgba(0, 229, 255, 0.1); }
-    .item-actions button {
-      background: transparent; border: 1px solid var(--accent-color); color: var(--accent-color);
-      margin-left: 12px; padding: 8px 18px; cursor: pointer; border-radius: 3px;
-      text-transform: uppercase; transition: all 0.3s var(--smooth-ease);
-      font-family: 'Orbitron', sans-serif; font-weight: 700; letter-spacing: 0.5px;
+    .item-details {
+        flex-grow: 1; overflow-y: auto; margin-bottom: 15px;
     }
-    .item-actions button:hover { background: var(--active-bg); color: #FFF; border-color: var(--hover-border-color); box-shadow: var(--highlight-glow); transform: translateY(-1px);}
-    .item-actions button:disabled { border-color: rgba(0, 229, 255, 0.15); color: rgba(200, 240, 255, 0.3); cursor: not-allowed; background: transparent; box-shadow: none; transform: none; }
+    /* Scrollbar for Item Details */
+    .item-details::-webkit-scrollbar { width: 6px; }
+    .item-details::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    .item-details::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
 
+    .item-info h2 { margin: 0 0 10px 0; font-size: 1.3em; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+    .item-info p { font-size: 0.95em; line-height: 1.5; color: var(--text-color); }
+    .item-actions { flex-shrink: 0; text-align: right; }
+    .item-actions button {
+      background: transparent; border: 2px solid var(--accent-color); color: var(--accent-color);
+      margin-left: 10px; padding: 8px 16px; cursor: pointer;
+      text-transform: uppercase; transition: background 0.3s, color 0.3s, border-color 0.3s; /* Added border-color */
+      font-family: 'Orbitron', sans-serif;
+    }
+    .item-actions button:hover { background: var(--active-bg); color: #FFF; border-color: var(--hover-border-color); /* Match nav hover */}
+    .item-actions button:disabled { border-color: rgba(0, 204, 255, 0.2); color: rgba(0, 204, 255, 0.3); cursor: not-allowed; background: transparent; }
 
     /* ===== Email Section Styling ===== */
-    #email .panel-content { display: flex; gap: 20px; padding: 20px 0 0 0; }
+    #email .panel-content { display: flex; gap: 15px; padding: 15px 0 0 0; }
     #emailList {
         flex: 1; list-style: none; padding: 0; margin: 0;
         border-right: 1px solid var(--border-color); overflow-y: auto;
-        padding-right: 20px; max-height: calc(65vh - 110px); /* Adjusted for panel padding/header */
+        padding-right: 15px; max-height: calc(60vh - 100px);
     }
+    /* Scrollbar for Email List */
+    #emailList::-webkit-scrollbar { width: 6px; }
+    #emailList::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    #emailList::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
 
     #emailList li {
-        padding: 12px 15px; border: 1px solid transparent; border-left: 3px solid transparent; /* Left indicator border */
-        margin-bottom: 8px; border-radius: 2px; cursor: pointer;
-        transition: background-color 0.3s var(--smooth-ease), border-color 0.3s var(--smooth-ease), box-shadow 0.3s var(--smooth-ease);
-        position: relative; /* For pseudo-elements */
+        padding: 10px 12px; border: 1px solid transparent; border-bottom: 1px solid rgba(0, 204, 255, 0.15);
+        margin-bottom: 5px; border-radius: 4px; cursor: pointer;
+        transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s; /* Added box-shadow transition */
     }
-     #emailList li:hover { background-color: rgba(0, 229, 255, 0.06); border-left-color: var(--hover-border-color); }
-     #emailList li.active {
-        background-color: var(--active-bg); border-left-color: var(--accent-color);
-        box-shadow: inset 3px 0 8px rgba(0, 229, 255, 0.1); /* Inner shadow for active */
+    #emailList li:hover { background-color: rgba(0, 204, 255, 0.08); border-color: rgba(0, 204, 255, 0.2); }
+    #emailList li.active {
+        background-color: var(--active-bg); border-color: var(--accent-color);
+        box-shadow: 0 0 5px rgba(0, 204, 255, 0.3); /* Glow for selected email */
     }
-    #emailList li .sender { font-weight: 700; display: block; margin-bottom: 4px; color: var(--accent-color); font-size: 0.95em; }
+    #emailList li .sender { font-weight: bold; display: block; margin-bottom: 3px; color: var(--accent-color); }
     #emailList li .subject { font-size: 0.9em; color: var(--text-color); }
-    #emailList li.read .subject { opacity: 0.6; }
-    #emailList li.unread::before {
-        content: ''; width: 6px; height: 6px; background-color: var(--accent-color); border-radius: 50%;
-        position: absolute; left: -15px; top: 50%; transform: translateY(-50%);
-        box-shadow: 0 0 5px var(--accent-color);
-    }
+    #emailList li.read .subject { opacity: 0.7; }
+    #emailList li.unread::before { content: '●'; color: var(--accent-color); font-size: 0.8em; margin-right: 8px; display: inline-block; }
 
-    #emailContent { flex: 2; padding: 0 15px; overflow-y: auto; max-height: calc(65vh - 110px); }
-    #emailContent h2 { font-size: 1.5em; color: var(--accent-color); margin: 0 0 15px 0; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); }
-    #emailContent .email-meta { font-size: 0.9em; color: rgba(200, 240, 255, 0.7); margin-bottom: 25px; }
-    #emailContent .email-meta span { display: block; margin-bottom: 3px; }
-    #emailContent .email-body { font-size: 1em; line-height: 1.7; white-space: pre-wrap; padding-bottom: 20px; }
-    #emailPlaceholder { text-align: center; margin-top: 60px; font-size: 1.2em; color: rgba(200, 240, 255, 0.5); font-style: italic; }
+    #emailContent { flex: 2; padding: 0 10px; overflow-y: auto; max-height: calc(60vh - 100px); }
+    /* Scrollbar for Email Content */
+    #emailContent::-webkit-scrollbar { width: 6px; }
+    #emailContent::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px;}
+    #emailContent::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 3px; border: 1px solid var(--panel-bg); }
+
+    #emailContent h2 { font-size: 1.4em; color: var(--accent-color); margin: 0 0 15px 0; padding-bottom: 5px; border-bottom: 1px solid var(--border-color); }
+    #emailContent .email-meta { font-size: 0.85em; color: rgba(0, 204, 255, 0.7); margin-bottom: 20px; }
+    #emailContent .email-meta span { display: block; }
+    #emailContent .email-body { font-size: 0.95em; line-height: 1.6; white-space: pre-wrap; }
+    #emailPlaceholder { text-align: center; margin-top: 50px; font-size: 1.1em; color: rgba(0, 204, 255, 0.6); }
 
     /* ===== Refined Ripple Effect ===== */
     .ripple {
-      position: fixed; border-radius: 50%;
-      /* Softer, wider gradient */
-      background: radial-gradient(circle,
-          rgba(0,229,255,0.1) 2%,
-          rgba(0,229,255,0.08) 15%,
-          rgba(0,229,255,0.05) 30%,
-          rgba(0,229,255,0) 60%
-      );
-      transform: scale(0); pointer-events: none;
-      animation: ripple-effect 0.8s cubic-bezier(0.25, 0.8, 0.25, 1); /* Smoother ease */
-      z-index: 50;
+      position: fixed; /* Use fixed so it appears correctly regardless of scroll */
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,204,255,0.15) 5%, rgba(0,204,255,0.08) 25%, rgba(0,204,255,0) 55%);
+      transform: scale(0);
+      pointer-events: none;
+      animation: ripple-effect 0.7s ease-out;
+      z-index: 50; /* Below most UI, but above background */
     }
-    @keyframes ripple-effect { /* Slightly adjusted animation */
-      0% { transform: scale(0); opacity: 0.7; }
-      70% { transform: scale(1.8); opacity: 0.2; } /* Expand further */
-      100% { transform: scale(2.2); opacity: 0; }
+    @keyframes ripple-effect {
+      0% { transform: scale(0); opacity: 0.6; }
+      70% { transform: scale(1.5); opacity: 0.3; }
+      100% { transform: scale(2.0); opacity: 0; }
     }
 
     /* ===== Other Section Placeholders ===== */
     #map .panel-content p,
     #codex .panel-content p,
     #scanner .panel-content p,
-    #vitals .panel-content p {
-        padding-top: 40px; font-size: 1.2em; text-align: center;
-        color: rgba(200, 240, 255, 0.6); font-style: italic;
-    }
+    #vitals .panel-content p { padding-top: 20px; font-size: 1.1em; text-align: center; }
 
   </style>
 </head>
 <body>
-  <!-- Scanline effect is applied via body::after -->
-
   <!-- ===== Login Panel ===== -->
   <div id="loginPanel">
-    <h1 class="holo-text">Interface Access</h1> <!-- Changed Title -->
-    <input type="text" id="username" placeholder="Operator ID" value="Vesta"/>
-    <input type="password" id="passcode" placeholder="Auth Code" value="password" />
-    <button id="loginButton" class="holo-text">Establish Link</button> <!-- Changed Button Text -->
+    <h1 class="holo-text">Access Required</h1>
+    <input type="text" id="username" placeholder="Username" value="Vesta"/>
+    <input type="password" id="passcode" placeholder="Passcode" value="password" />
+    <button id="loginButton" class="holo-text">Initiate Link</button>
   </div>
 
   <!-- ===== Main Content (hidden until login) ===== -->
   <div id="mainContent">
     <!-- ===== Intro Message ===== -->
-    <div id="introMessage" class="holo-text">Link Established. Welcome, Operator Vyntarion.</div> <!-- Changed Message -->
+    <div id="introMessage" class="holo-text">Welcome, Vesta Vyntarion.</div>
 
     <!-- ===== Navigation ===== -->
     <nav>
-      <button data-section="inventory" class="holo-text">Cargo</button> <!-- Renamed -->
-      <button data-section="map" class="holo-text">NavChart</button> <!-- Renamed -->
-      <button data-section="email" class="holo-text">Comms</button> <!-- Renamed -->
+      <button data-section="inventory" class="holo-text">Inventory</button>
+      <button data-section="map" class="holo-text">Map</button>
+      <button data-section="email" class="holo-text">Email</button>
       <button data-section="codex" class="holo-text">Codex</button>
-      <button data-section="scanner" class="holo-text">Sensors</button> <!-- Renamed -->
-      <button data-section="vitals" class="holo-text">Biometrics</button> <!-- Renamed -->
+      <button data-section="scanner" class="holo-text">Scanner</button>
+      <button data-section="vitals" class="holo-text">Vitals</button>
     </nav>
 
     <!-- ===== Content Panels Wrapper ===== -->
     <div id="contentWrapper">
       <div id="map" class="content-card">
-        <h1 class="holo-text">Navigation Chart</h1>
-        <div class="panel-content"> <p class="holo-text">Awaiting Astrogation Data Feed...</p> </div>
+        <h1 class="holo-text">Navigation Grid</h1>
+        <div class="panel-content"> <p class="holo-text">Stellar Cartography Data Unavailable.</p> </div>
       </div>
       <div id="email" class="content-card">
-        <h1 class="holo-text">Communications Terminal</h1>
+        <h1 class="holo-text">Comms Terminal</h1>
          <div class="panel-content">
             <ul id="emailList"> <!-- Populated by JS --> </ul>
             <div id="emailContent">
-                 <div id="emailPlaceholder" class="holo-text">Select message digest...</div>
-                 <h2 id="emailSubject" class="holo-text" style="display: none;"></h2> <!-- Added holo-text class -->
-                 <div id="emailMeta" style="display: none;">
-                     <span id="emailSender"></span>
-                     <span id="emailDate"></span>
-                 </div>
+                 <div id="emailPlaceholder" class="holo-text">Select a message from the terminal list.</div>
+                 <h2 id="emailSubject" style="display: none;"></h2>
+                 <div id="emailMeta" style="display: none;"> <span id="emailSender"></span> <span id="emailDate"></span> </div>
                  <div id="emailBody" style="display: none;"></div>
             </div>
          </div>
       </div>
       <div id="codex" class="content-card">
-        <h1 class="holo-text">Data Codex Archives</h1>
-        <div class="panel-content"> <p class="holo-text">Archive Link Offline. Establish Connection.</p> </div>
+        <h1 class="holo-text">Data Codex</h1>
+        <div class="panel-content"> <p class="holo-text">No entries found. Connect to Archive Node.</p> </div>
       </div>
       <div id="scanner" class="content-card">
-        <h1 class="holo-text">Active Sensor Array</h1>
-         <div class="panel-content"> <p class="holo-text">Sensor Suite Idle. Awaiting Scan Directive.</p> </div>
+        <h1 class="holo-text">Environmental Scanner</h1>
+         <div class="panel-content"> <p class="holo-text">Scanner inactive. Awaiting target lock.</p> </div>
       </div>
       <div id="vitals" class="content-card">
-        <h1 class="holo-text">Operator Biometrics</h1>
-         <div class="panel-content"> <p class="holo-text">Bio-Telemetry Signal Lost. Check Neural Interface.</p> </div>
+        <h1 class="holo-text">Biometrics</h1>
+         <div class="panel-content"> <p class="holo-text">Telemetry offline. Check neural link.</p> </div>
       </div>
     </div>
 
   <!-- ===== Inventory Container (Separate from contentWrapper) ===== -->
-  <div id="inventoryContainer"> <!-- Now uses .active logic like content-cards -->
+  <div id="inventoryContainer">
     <div class="inventory-grid">
-        <!-- Slots - Updated placeholder SVG -->
       <div class="inventory-slot" data-itemid="health_potion_1"><img src="placeholder.png" alt="Item"></div>
       <div class="inventory-slot" data-itemid="keycard_alpha"><img src="placeholder.png" alt="Item"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <div class="inventory-slot"><img src="placeholder.png" alt="Empty"></div>
-      <!-- More slots -->
+      <div class="inventory-slot"></div> <div class="inventory-slot"></div> <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div> <div class="inventory-slot"></div> <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div> <div class="inventory-slot"></div> <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div> <div class="inventory-slot"></div> <div class="inventory-slot"></div>
+      <div class="inventory-slot"></div> <div class="inventory-slot"></div>
+      <!-- More slots as needed -->
     </div>
     <div class="item-info">
       <div class="item-details">
-        <h2 class="holo-text" id="itemInfoTitle">Cargo Manifest</h2> <!-- Changed title -->
-        <p class="holo-text" id="itemInfoDesc">Select item for detailed scan.</p> <!-- Changed text -->
+        <h2 class="holo-text" id="itemInfoTitle">Item(s)</h2>
+        <p class="holo-text" id="itemInfoDesc">Select an item from the grid.</p>
       </div>
       <div class="item-actions">
-        <button id="itemUseButton" class="holo-text" disabled>Engage</button> <!-- Changed text -->
-        <button id="itemDropButton" class="holo-text" disabled>Jettison</button> <!-- Changed text -->
+        <button id="itemUseButton" class="holo-text" disabled>Use</button>
+        <button id="itemDropButton" class="holo-text" disabled>Drop</button>
       </div>
     </div>
   </div>
 
   <script>
-    // ----- Global DOM Elements (Unchanged) -----
+    // ----- Global DOM Elements -----
     const loginPanel = document.getElementById("loginPanel");
     const loginButton = document.getElementById("loginButton");
     const mainContent = document.getElementById("mainContent");
@@ -537,236 +540,299 @@
     const emailDateEl = document.getElementById("emailDate");
     const emailBodyEl = document.getElementById("emailBody");
 
-    let loadingStartTime;
+    let loadingStartTime; // For Three.js timing
 
-    // ----- Dummy Data (Items renamed slightly) -----
+    // ----- Dummy Data (Unchanged) -----
     const inventoryItems = {
-        "health_potion_1": { name: "Medi-Gel Applicator", description: "Standard Nanite Medical Gel Applicator. Seals minor bio-trauma and provides temporary analgesic effect. Single charge.", usable: true },
-        "keycard_alpha": { name: "Access Credential (Gamma)", description: "Standard Personnel Credential. Grants Level 1 access within Sector Gamma structures.", usable: false },
+        "health_potion_1": { name: "Medi-Gel (Basic)", description: "Standard issue regen-gel. Seals minor wounds and provides temporary pain relief. Single use.", usable: true },
+        "keycard_alpha": { name: "Access Key (Sector Gamma)", description: "Standard personnel keycard. Grants access to Sector Gamma maintenance hatches and common areas.", usable: false },
     };
-    // Emails slightly reworded for flavor
     const emails = [
-        { id: 1, sender: "Interface Diagnostics", subject: "Holo-Interface Synced", date: "Cycle 34.1", body: "Operator VST-VYN,\n\nNeural link established. Holo-interface connection stable. Core system parameters nominal.\n\nConsult Data Codex for operational protocols and safety directives.\n\nReport system anomalies via secure comms channel.\n\n- Central Command AI", read: false },
-        { id: 2, sender: "Logistics Unit 7-Sigma", subject: "Cargo Manifest Confirmation", date: "Cycle 34.0", body: "Attn: Operator Vyntarion,\n\nStandard Equipment Loadout dispatched:\n- Sidearm, Energy Pulse (See Sensor Slot)\n- Medi-Gel Applicator x1\n- Access Credential (Gamma) x1\n\nConfirm receipt via Logistics Terminal.\n\n- QM-7S", read: false },
-        { id: 3, sender: "ALERT - Automated System", subject: "Energy Anomaly - Sector Gamma", date: "Cycle 33.9", body: "SYSTEM ALERT: Unidentified subspace energy fluctuation detected. Origin point localized to Sector Gamma.\n\nMagnitude readings exceed standard operational variance.\n\nCaution advised. Maintain safe distance pending Hazard Evaluation Team clearance.\n\nLOG ID: AE-8873-G", read: true },
-        { id: 4, sender: "Dr. Aris Thorne", subject: "RE: Prosthetic Resonance Query", date: "Cycle 33.8", body: "Vesta,\n\nFurther analysis on the resonance patterns from your prosthetic housing suggests a non-local interference source. Data is inconclusive but points towards temporal distortions.\n\nKeep your sensor suite active. Forward any anomalous energy signatures, especially chroniton or tachyon readings, directly to my encrypted channel.\n\nMaintain vigilance,\nAris", read: false },
+        { id: 1, sender: "System Operations", subject: "Holo-Pad Calibration", date: "G34.1", body: "Personnel VST-VYN,\n\nYour connection to the Holo-Oad is confirmed. All core systems nominal.\n\nRemember to consult the Data Codex for operational procedures and review safety protocols.\n\nReport any anomalies immediately via the designated channel.\n\n- GestOps Command", read: false },
+        { id: 2, sender: "Quartermaster Unit 7", subject: "Inventory Manifest Update", date: "G34.0", body: "Attn: V. Vyntarion,\n\nYour starting equipment has been dispatched:\n- Standard Issue Sidearm (Check Scanner Slot)\n- Medi-Gel (Basic) x1\n- Access Key: Sector Gamma x1\n\nConfirm receipt.\n\n- QM-7", read: false },
+        { id: 3, sender: "WARNING - Automated Alert", subject: "Energy Fluctuation Detected - Sector Gamma", date: "G33.9", body: "ALERT: Unidentified energy signature detected originating from Sector Gamma.\n\n Null Magnitude exceeds standard operational parameters.\n\nProceed with caution. Avoid area until cleared by Hazard Containment.\n\nRECORD ID: AE-8873-G", read: true },
+        { id: 4, sender: "Dr. Aris T.", subject: "Re: Research Query", date: "G33.8", body: "Vesta,\n\nRegarding your query for your prosthetic container, I have a few key pieces of newfound information. My studies suggest an external influence, but I lack sufficient data.\n\nKeep your scanner active. Any unusual energy readings, especially temporal signatures, forward them to me directly.\n\nStay safe,\nAris", read: false },
     ];
 
-    // ----- Login Handling (Unchanged JS logic, relies on CSS transitions) -----
+    // ----- Login Handling -----
     loginButton.addEventListener("click", function() {
       const username = document.getElementById("username").value.trim();
       const passcode = document.getElementById("passcode").value.trim();
       if (username && passcode) {
+
+        // NEW: Start fading out the ::before background
         document.body.classList.add("hide-login-bg");
+
+        // 1. Start hiding login panel
         loginPanel.classList.add("hidden");
+
+        // 2. After login panel fades out, remove it and show main content
         loginPanel.addEventListener('transitionend', () => {
-            if (loginPanel.classList.contains('hidden')) {
-                loginPanel.style.display = "none";
+            if (loginPanel.classList.contains('hidden')) { // Check if it's actually hidden now
+                loginPanel.style.display = "none"; // Fully remove after fade
+
+                // Show main content container (triggers its fade-in via CSS)
                 mainContent.classList.add("visible");
+
+                // Start the Three.js background only AFTER the UI is ready
                 loadingStartTime = Date.now() * 0.001;
-                // Added check before initializing
-                if (typeof initThreeJS === 'function' && !window.threeJsInitialized) {
+                if (typeof initThreeJS === 'function') {
                     initThreeJS();
-                    window.threeJsInitialized = true; // Prevent re-initialization
                 }
-                // Added check before starting animation loop
-                if (typeof animateThreeJS === 'function' && !window.threeJsAnimating) {
-                     requestAnimationFrame(animateThreeJS);
-                     window.threeJsAnimating = true; // Prevent multiple loops
+                if (typeof animateThreeJS === 'function') {
+                     requestAnimationFrame(animateThreeJS); // Start the animation loop
                 }
             }
-        }, { once: true });
+        }, { once: true }); // Ensure this listener runs only once
+
       } else {
-        alert("Access Denied: Invalid Credentials."); // Slightly different message
+        alert("Access denied. Credentials required.");
       }
     });
 
-    // ----- Navigation & Panel Switching Logic (Unchanged JS logic, relies on CSS transitions) -----
-     navButtons.forEach(btn => {
+    // ----- Navigation & Panel Switching Logic (MODIFIED) -----
+    navButtons.forEach(btn => {
       btn.addEventListener("click", () => {
         const section = btn.getAttribute("data-section");
         const targetCard = document.getElementById(section);
         const isInventory = section === "inventory";
-        const targetPanel = isInventory ? inventoryContainer : targetCard;
+        const targetPanel = isInventory ? inventoryContainer : targetCard; // Determine the actual panel element
 
+        // --- NEW Toggle Logic ---
+        // Check if the clicked button's corresponding panel is *already* active
         if (btn.classList.contains("active")) {
+            // If yes, deactivate this button and its panel
             btn.classList.remove("active");
-            if (targetPanel) targetPanel.classList.remove("active");
+            if (targetPanel) {
+                 targetPanel.classList.remove("active");
+            }
+            // Stop further processing
             return;
         }
+        // --- End NEW Toggle Logic ---
 
-        navButtons.forEach(b => { if (b !== btn) b.classList.remove("active"); });
-        contentCards.forEach(card => { if (!isInventory && card !== targetCard) card.classList.remove("active"); });
-        if (!isInventory) inventoryContainer.classList.remove("active");
+        // If it wasn't active, proceed with the normal switch logic:
 
+        // 1. Deactivate all OTHER buttons and panels
+        navButtons.forEach(b => {
+            if (b !== btn) { // Don't remove active from the one just clicked yet
+               b.classList.remove("active")
+            };
+        });
+        contentCards.forEach(card => {
+            // Make sure we don't deactivate the target if it's a content card
+            if (!isInventory && card !== targetCard) {
+                card.classList.remove("active")
+            };
+        });
+        // Deactivate inventory if the target is not inventory
+        if (!isInventory) {
+            inventoryContainer.classList.remove("active");
+        }
+
+        // 2. Activate the clicked button
         btn.classList.add("active");
+
+        // 3. Activate the correct panel
         if (targetPanel) {
             targetPanel.classList.add("active");
+            // Special handling for email section
             if (section === "email") {
                 populateEmailList();
-                resetEmailContent();
+                resetEmailContent(); // Show placeholder initially when opening email
             }
-        } else { console.warn("Target panel not found for section:", section); }
+        } else {
+            console.warn("Target panel not found for section:", section);
+        }
       });
     });
 
 
-    // ----- Inventory Interaction Logic (Updated placeholder SVG) -----
+    // ----- Inventory Interaction Logic (Minor visual change for placeholder) -----
     let selectedSlot = null;
 
     inventorySlots.forEach(slot => {
         slot.addEventListener("click", () => {
             const itemId = slot.getAttribute("data-itemid");
 
-            if (selectedSlot && selectedSlot !== slot) selectedSlot.classList.remove("selected");
+            // Deselect previous slot visually
+            if (selectedSlot && selectedSlot !== slot) {
+                selectedSlot.classList.remove("selected");
+            }
 
+            // Toggle selection state for the clicked slot
             if (slot.classList.contains("selected")) {
+                // If already selected, deselect it
                 slot.classList.remove("selected");
                 selectedSlot = null;
-                itemInfoTitle.textContent = "Cargo Manifest"; // Reset title
-                itemInfoDesc.textContent = "Select item for detailed scan."; // Reset desc
+                // Reset info panel to default state
+                itemInfoTitle.textContent = "Item(s)";
+                itemInfoDesc.textContent = "Select an item from the grid.";
                 itemUseButton.disabled = true;
                 itemDropButton.disabled = true;
             } else {
+                // If not selected, select it
                 slot.classList.add("selected");
-                selectedSlot = slot;
+                selectedSlot = slot; // Update selected slot tracker
 
                 if (itemId && inventoryItems[itemId]) {
                     const item = inventoryItems[itemId];
                     itemInfoTitle.textContent = item.name;
                     itemInfoDesc.textContent = item.description;
-                    itemUseButton.disabled = !item.usable;
-                    itemDropButton.disabled = false;
+                    itemUseButton.disabled = !item.usable; // Enable 'Use' if usable
+                    itemDropButton.disabled = false; // Enable 'Drop'
                 } else {
-                    itemInfoTitle.textContent = "Empty Stowage"; // Changed text
-                    itemInfoDesc.textContent = "This cargo slot is unoccupied."; // Changed text
+                    // Empty slot selected
+                    itemInfoTitle.textContent = "Empty Slot";
+                    itemInfoDesc.textContent = "This inventory slot is empty.";
                     itemUseButton.disabled = true;
                     itemDropButton.disabled = true;
                 }
             }
         });
 
-        // Add refined placeholder images
+        // Add placeholder images (Using lighter SVG for better blend)
         const img = slot.querySelector('img');
-        if (img && (img.src.includes('placeholder.png') || img.alt === 'Empty')) { // Catch explicitly empty ones too
-            // More abstract/techy placeholder SVG
-             const placeholderSvg = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" viewBox="0 0 100 100">
-                    <defs>
-                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:rgba(0, 229, 255, 0.05); stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:rgba(0, 229, 255, 0.15); stop-opacity:1" />
-                        </linearGradient>
-                    </defs>
-                    <rect width="100" height="100" fill="url(#grad1)"/>
-                    <circle cx="50" cy="50" r="25" fill="none" stroke="rgba(0, 229, 255, 0.2)" stroke-width="1.5" stroke-dasharray="4 4"/>
-                    <line x1="50" y1="25" x2="50" y2="75" stroke="rgba(0, 229, 255, 0.1)" stroke-width="1"/>
-                     <line x1="25" y1="50" x2="75" y2="50" stroke="rgba(0, 229, 255, 0.1)" stroke-width="1"/>
+        if (img && img.src.includes('placeholder.png')) {
+            const placeholderSvg = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100">
+                    <rect width="100" height="100" fill="rgba(0,204,255,0.03)"/>
+                    <circle cx="50" cy="50" r="30" fill="none" stroke="rgba(0,204,255,0.2)" stroke-width="4" stroke-dasharray="10 5"/>
+                    <line x1="35" y1="35" x2="65" y2="65" stroke="rgba(0,204,255,0.15)" stroke-width="3"/>
+                    <line x1="65" y1="35" x2="35" y2="65" stroke="rgba(0,204,255,0.15)" stroke-width="3"/>
                 </svg>`;
             img.src = `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
-            img.alt = 'Empty Slot'; // Set alt text
-            img.style.opacity = "0.6"; // Make placeholder slightly less prominent
+            img.style.opacity = "0.4"; // Make placeholder less prominent
         }
     });
 
-    // Helper function to update slot display after use/drop
-    function clearSlotDisplay(slot) {
-        const img = slot.querySelector('img');
-        slot.removeAttribute("data-itemid");
-        if (img) {
-            const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="70" height="70" viewBox="0 0 100 100"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:rgba(0, 229, 255, 0.05); stop-opacity:1" /><stop offset="100%" style="stop-color:rgba(0, 229, 255, 0.15); stop-opacity:1" /></linearGradient></defs><rect width="100" height="100" fill="url(#grad1)"/><circle cx="50" cy="50" r="25" fill="none" stroke="rgba(0, 229, 255, 0.2)" stroke-width="1.5" stroke-dasharray="4 4"/><line x1="50" y1="25" x2="50" y2="75" stroke="rgba(0, 229, 255, 0.1)" stroke-width="1"/><line x1="25" y1="50" x2="75" y2="50" stroke="rgba(0, 229, 255, 0.1)" stroke-width="1"/></svg>`;
-            img.src = `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
-            img.alt = 'Empty Slot';
-            img.style.opacity = "0.6";
-            img.style.transform = 'scale(1)'; // Reset scale if it was hovered
-        }
-        // Reset info panel and selection state
-        itemInfoTitle.textContent = "Empty Stowage";
-        itemInfoDesc.textContent = "This cargo slot is unoccupied.";
-        itemUseButton.disabled = true;
-        itemDropButton.disabled = true;
-        if (selectedSlot === slot) {
-            slot.classList.remove("selected");
-            selectedSlot = null;
-        }
-    }
-
-    // Inventory Button Actions (Using the clearSlotDisplay helper)
-     itemUseButton.addEventListener("click", () => {
+    // Inventory Button Actions (Unchanged from previous refinement logic)
+     itemUseButton.addEventListener("click", () => { /* ... unchanged ... */
         if (selectedSlot && !itemUseButton.disabled) {
             const itemId = selectedSlot.getAttribute("data-itemid");
             if (itemId && inventoryItems[itemId]) {
-                 // Simulate use feedback (could add a brief animation/sound cue later)
-                 console.log(`Used ${inventoryItems[itemId].name}!`);
-                 // Clear the slot visually and update state
-                 clearSlotDisplay(selectedSlot);
-                 // In a real game, you'd update quantities or remove the item data
+                 alert(`Used ${inventoryItems[itemId].name}!`);
+                 // Implement actual 'use' logic here (e.g., remove from inventory)
+                  if (itemId === 'health_potion_1') { // Example specific use case
+                      // Simulate removal or quantity decrease
+                      const img = selectedSlot.querySelector('img');
+                      selectedSlot.removeAttribute("data-itemid");
+                      if(img) { // Replace image with placeholder
+                         const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100"><rect width="100" height="100" fill="rgba(0,204,255,0.03)"/><circle cx="50" cy="50" r="30" fill="none" stroke="rgba(0,204,255,0.2)" stroke-width="4" stroke-dasharray="10 5"/><line x1="35" y1="35" x2="65" y2="65" stroke="rgba(0,204,255,0.15)" stroke-width="3"/><line x1="65" y1="35" x2="35" y2="65" stroke="rgba(0,204,255,0.15)" stroke-width="3"/></svg>`;
+                         img.src = `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
+                         img.style.opacity = "0.4";
+                      }
+                      itemInfoTitle.textContent = "Empty Slot";
+                      itemInfoDesc.textContent = "This inventory slot is empty.";
+                      itemUseButton.disabled = true;
+                      itemDropButton.disabled = true;
+                      selectedSlot.classList.remove("selected");
+                      selectedSlot = null;
+                  }
              }
         }
     });
-     itemDropButton.addEventListener("click", () => {
+     itemDropButton.addEventListener("click", () => { /* ... unchanged ... */
         if (selectedSlot && !itemDropButton.disabled) {
             const itemId = selectedSlot.getAttribute("data-itemid");
-            const itemName = itemId ? (inventoryItems[itemId]?.name || `Item ID: ${itemId}`) : "the selected cargo";
-             // Use confirm prompt (could be replaced with a custom modal later)
-             if (confirm(`Confirm Jettison: ${itemName}? This action cannot be undone.`)) {
-                 console.log(`Jettisoned ${itemName}.`);
-                 // Clear the slot visually and update state
-                 clearSlotDisplay(selectedSlot);
-                  // In a real game, remove the item data permanently
+            const itemName = itemId ? (inventoryItems[itemId]?.name || `Item ID: ${itemId}`) : "the selected slot content";
+             if (confirm(`Are you sure you want to drop ${itemName}?`)) {
+                alert(`Dropped ${itemName}.`);
+                 if (itemId) { // Only drop if there is an item ID
+                     selectedSlot.removeAttribute("data-itemid");
+                      const img = selectedSlot.querySelector('img');
+                      if(img) { // Replace image with placeholder
+                        const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 100 100"><rect width="100" height="100" fill="rgba(0,204,255,0.03)"/><circle cx="50" cy="50" r="30" fill="none" stroke="rgba(0,204,255,0.2)" stroke-width="4" stroke-dasharray="10 5"/><line x1="35" y1="35" x2="65" y2="65" stroke="rgba(0,204,255,0.15)" stroke-width="3"/><line x1="65" y1="35" x2="35" y2="65" stroke="rgba(0,204,255,0.15)" stroke-width="3"/></svg>`;
+                        img.src = `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
+                        img.style.opacity = "0.4";
+                      }
+                     // Reset info panel
+                     itemInfoTitle.textContent = "Empty Slot";
+                     itemInfoDesc.textContent = "This inventory slot is empty.";
+                     itemUseButton.disabled = true;
+                     itemDropButton.disabled = true;
+                     selectedSlot.classList.remove("selected");
+                     selectedSlot = null;
+                 } else {
+                      // If it was just an empty slot selected, just deselect visually
+                     itemInfoTitle.textContent = "Item(s)";
+                     itemInfoDesc.textContent = "Select an item from the grid.";
+                     selectedSlot.classList.remove("selected");
+                     selectedSlot = null;
+                 }
             }
         }
     });
 
-    // ----- Email Section Logic (Unchanged JS, relies on CSS) -----
-    function populateEmailList() {
-        emailList.innerHTML = ''; emails.sort((a, b) => b.id - a.id);
+    // ----- Email Section Logic (Unchanged) -----
+    function populateEmailList() { /* ... unchanged ... */
+        emailList.innerHTML = ''; // Clear previous list
+        emails.sort((a, b) => b.id - a.id); // Sort newest first
+
         emails.forEach(email => {
             const li = document.createElement('li');
             li.setAttribute('data-email-id', email.id);
             li.classList.toggle('read', email.read);
             li.classList.toggle('unread', !email.read);
-            const senderSpan = document.createElement('span'); senderSpan.className = 'sender holo-text'; senderSpan.textContent = email.sender;
-            const subjectSpan = document.createElement('span'); subjectSpan.className = 'subject holo-text'; subjectSpan.textContent = email.subject;
-            li.appendChild(senderSpan); li.appendChild(subjectSpan);
+
+            const senderSpan = document.createElement('span');
+            senderSpan.className = 'sender holo-text';
+            senderSpan.textContent = email.sender;
+
+            const subjectSpan = document.createElement('span');
+            subjectSpan.className = 'subject holo-text';
+            subjectSpan.textContent = email.subject;
+
+            li.appendChild(senderSpan);
+            li.appendChild(subjectSpan);
+
             li.addEventListener('click', () => {
                 displayEmailContent(email.id);
                 document.querySelectorAll('#emailList li').forEach(item => item.classList.remove('active'));
                 li.classList.add('active');
             });
+
             emailList.appendChild(li);
         });
     }
-    function displayEmailContent(emailId) {
+    function displayEmailContent(emailId) { /* ... unchanged ... */
         const email = emails.find(e => e.id === emailId);
         if (email) {
             emailPlaceholder.style.display = 'none';
-            emailSubjectEl.style.display = 'block'; emailMetaEl.style.display = 'block'; emailBodyEl.style.display = 'block';
+            emailSubjectEl.style.display = 'block';
+            emailMetaEl.style.display = 'block';
+            emailBodyEl.style.display = 'block';
+
             emailSubjectEl.textContent = email.subject;
-            emailSenderEl.textContent = `Origin: ${email.sender}`; // Changed label
-            emailDateEl.textContent = `Timestamp: ${email.date}`; // Changed label
+            emailSenderEl.textContent = `From: ${email.sender}`;
+            emailDateEl.textContent = `Received: ${email.date}`;
             emailBodyEl.textContent = email.body;
+
             if (!email.read) {
                 email.read = true;
                 const listItem = emailList.querySelector(`li[data-email-id="${emailId}"]`);
-                if (listItem) { listItem.classList.remove('unread'); listItem.classList.add('read'); }
+                if (listItem) {
+                    listItem.classList.remove('unread');
+                    listItem.classList.add('read');
+                }
             }
-            emailContent.scrollTop = 0; // Scroll to top
+            emailContent.scrollTop = 0;
         }
     }
-    function resetEmailContent() {
+    function resetEmailContent() { /* ... unchanged ... */
         emailPlaceholder.style.display = 'block';
-        emailSubjectEl.style.display = 'none'; emailMetaEl.style.display = 'none'; emailBodyEl.style.display = 'none';
+        emailSubjectEl.style.display = 'none';
+        emailMetaEl.style.display = 'none';
+        emailBodyEl.style.display = 'none';
         document.querySelectorAll('#emailList li').forEach(item => item.classList.remove('active'));
     }
 
 
-    // ----- Ripple Effect on Click (Unchanged JS, relies on CSS) -----
-    document.addEventListener("click", function(e) {
-        // Prevent ripple on interactive elements
-        if (e.target.closest('button, .inventory-slot, #emailList li, input, a, select, textarea')) { return; }
+    // ----- Ripple Effect on Click (Unchanged) -----
+    document.addEventListener("click", function(e) { /* ... unchanged ... */
+        if (e.target.closest('button, .inventory-slot, #emailList li, input')) { return; } // Added input to prevent ripple
         const ripple = document.createElement("div"); ripple.classList.add("ripple");
-        const size = Math.max(window.innerWidth, window.innerHeight) * 0.5; // Slightly smaller max size
+        const size = Math.min(window.innerWidth, window.innerHeight) * 0.6;
         ripple.style.width = ripple.style.height = size + "px";
         ripple.style.left = e.clientX - size / 2 + "px";
         ripple.style.top = e.clientY - size / 2 + "px";
@@ -774,7 +840,10 @@
         ripple.addEventListener("animationend", () => { ripple.remove(); });
     });
 
-    // ----- Three.js Scene & Animation Code (Minor tweaks) -----
+    // ----- Three.js Scene & Animation Code (Unchanged from previous refinement) -----
+    // Includes initThreeJS, animateThreeJS, createScrollingPlexus, updateScrollingPlexus,
+    // createCodeTexture, createCircuitTexture, onWindowResize, onDocumentMouseMove,
+    // updateGlyphs, spawnGlyphOnWall, createGlyphSprite...
     let scene, camera, renderer;
     let corridor;
     let ceilingMesh, leftWallMesh, rightWallMesh;
@@ -784,72 +853,64 @@
     let mouse = new THREE.Vector2(0, 0);
     let targetRotationX = 0, targetRotationY = 0;
     let floorTexture, ceilingTexture, leftWallTexture, rightWallTexture;
-    const SCROLL_SPEED_FLOOR = 0.0006; // Slightly slower floor
-    const SCROLL_SPEED_CODE = 0.0004; // Slightly slower code walls
+    const SCROLL_SPEED_FLOOR = 0.0007;
+    const SCROLL_SPEED_CODE = 0.0005;
     let plexusGroup;
-    const repulsionDistance = 130; // Slightly larger repulsion area
-    const repulsionForce = 1.3; // Slightly weaker force
-    const friction = 0.94; // Slightly more friction
+    const repulsionDistance = 120;
+    const repulsionForce = 1.5;
+    const friction = 0.93;
 
-    function initThreeJS() {
+    function initThreeJS() { // Renamed in original
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x050a14); // Match new body background
-      scene.fog = new THREE.FogExp2(0x050a14, 0.00065); // Adjusted density/color
-      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 10000); // Slightly narrower FOV
-      camera.position.set(0, 0, 1700); // Slightly further back
+      scene.background = new THREE.Color(0x0d1b2a);
+      scene.fog = new THREE.FogExp2(0x0d1b2a, 0.0007);
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+      camera.position.set(0, 0, 1800); // Closer initial position
       camera.lookAt(0, 0, 0);
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // Enable alpha for potential future layering
-      renderer.setPixelRatio(window.devicePixelRatio); // Better quality on high DPI
+      renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
+      // Set canvas style *before* appending
       renderer.domElement.style.position = 'fixed';
       renderer.domElement.style.top = '0';
       renderer.domElement.style.left = '0';
-      renderer.domElement.style.zIndex = '-1';
+      renderer.domElement.style.zIndex = '-1'; // Ensure it's behind everything
       document.body.insertBefore(renderer.domElement, document.body.firstChild);
 
-      const ambientLight = new THREE.AmbientLight(0xccddee, 0.5); // Cooler ambient light
-      scene.add(ambientLight);
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.25); // Less intense directional
-      directionalLight.position.set(0.5, 1, 0.75).normalize();
-      scene.add(directionalLight);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); scene.add(ambientLight);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3); directionalLight.position.set(1, 1, 1).normalize(); scene.add(directionalLight);
 
       corridor = new THREE.Group(); scene.add(corridor);
 
-      // Use the same textures for now, generation logic unchanged
       leftWallTexture = createCodeTexture(512); leftWallTexture.wrapS = leftWallTexture.wrapT = THREE.RepeatWrapping; leftWallTexture.repeat.set(4, 5);
       rightWallTexture = createCodeTexture(512); rightWallTexture.wrapS = rightWallTexture.wrapT = THREE.RepeatWrapping; rightWallTexture.repeat.set(4, 5);
       floorTexture = createCodeTexture(512); floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; floorTexture.repeat.set(4, 10);
       ceilingTexture = createCircuitTexture(512); ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping; ceilingTexture.repeat.set(2, 2);
 
-      // Slightly reduced opacity for a subtler effect
-      const wallMatOpacity = 0.6;
-      const floorCeilOpacity = 0.6;
-      const leftWallMat = new THREE.MeshPhongMaterial({ map: leftWallTexture, side: THREE.DoubleSide, transparent: true, opacity: wallMatOpacity, fog: true }); // Enable fog interaction
-      const rightWallMat = new THREE.MeshPhongMaterial({ map: rightWallTexture, side: THREE.DoubleSide, transparent: true, opacity: wallMatOpacity, fog: true });
-      const floorMat = new THREE.MeshPhongMaterial({ map: floorTexture, side: THREE.DoubleSide, transparent: true, opacity: floorCeilOpacity, fog: true });
-      const ceilingMat = new THREE.MeshPhongMaterial({ map: ceilingTexture, side: THREE.DoubleSide, transparent: true, opacity: floorCeilOpacity, fog: true });
+      const leftWallMat = new THREE.MeshPhongMaterial({ map: leftWallTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+      const rightWallMat = new THREE.MeshPhongMaterial({ map: rightWallTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+      const floorMat = new THREE.MeshPhongMaterial({ map: floorTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+      const ceilingMat = new THREE.MeshPhongMaterial({ map: ceilingTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
 
       const planeGeo = new THREE.PlaneGeometry(CORRIDOR_SIZE, CORRIDOR_SIZE);
       ceilingMesh = new THREE.Mesh(planeGeo, ceilingMat); ceilingMesh.rotation.x = Math.PI / 2; ceilingMesh.position.y = CORRIDOR_SIZE / 2; corridor.add(ceilingMesh);
 
-      leftWallMesh = new THREE.Mesh(planeGeo, leftWallMat); leftWallMesh.rotation.y = Math.PI / 2; leftWallMesh.position.x = -CORRIDOR_SIZE / 2 - 500; corridor.add(leftWallMesh);
-      rightWallMesh = new THREE.Mesh(planeGeo, rightWallMat); rightWallMesh.rotation.y = -Math.PI / 2; rightWallMesh.position.x = CORRIDOR_SIZE / 2 + 500; corridor.add(rightWallMesh);
+      leftWallMesh = new THREE.Mesh(planeGeo, leftWallMat); leftWallMesh.rotation.y = Math.PI / 2; leftWallMesh.position.x = -CORRIDOR_SIZE / 2 - 500; // Start off-screen
+      corridor.add(leftWallMesh);
 
-      // Plexus: Tweak color slightly, make threshold a bit higher
-      plexusGroup = createScrollingPlexus(new THREE.Color(0x00aaff), 180, 460); // Brighter blue, more nodes, slightly larger threshold
-      plexusGroup.rotation.x = -0.15; // Less tilted
-      plexusGroup.renderOrder = 1; plexusGroup.scale.set(0, 0, 0);
+      rightWallMesh = new THREE.Mesh(planeGeo, rightWallMat); rightWallMesh.rotation.y = -Math.PI / 2; rightWallMesh.position.x = CORRIDOR_SIZE / 2 + 500; // Start off-screen
+      corridor.add(rightWallMesh);
+
+      plexusGroup = createScrollingPlexus(); plexusGroup.rotation.x = -0.2; plexusGroup.renderOrder = 1; plexusGroup.scale.set(0, 0, 0); // Start scaled down
       scene.add(plexusGroup);
 
-      // Glyphs: Slightly different character set, maybe fewer
-      const glyphLetters = ["Ξ","Ψ","Φ","Λ","Ω","Σ","Δ","Π","Θ","◊", "+", "-", "*"]; // More abstract/tech symbols
-      glyphs = [];
-      for (let i = 0; i < 25; i++) { // Reduced count
+      const glyphLetters = ["ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᛉ","ᛏ","ᛒ","ᛖ","ᛞ","ᛟ","𐎠","𐎣","𐎫"];
+      glyphs = []; // Clear glyphs array on re-init if called multiple times
+      for (let i = 0; i < 30; i++) { /* ... glyph creation unchanged ... */
          const letter = glyphLetters[Math.floor(Math.random() * glyphLetters.length)];
-         const sprite = createGlyphSprite(letter, 'rgba(0, 229, 255, 0.9)'); // Use variable, slightly less opaque
+         const sprite = createGlyphSprite(letter);
          if (Math.random() < 0.5) spawnGlyphOnWall(sprite); else sprite.position.set((Math.random() - 0.5) * CORRIDOR_SIZE, Math.random() * 1950 - 700, -Math.random() * CORRIDOR_SIZE);
-         sprite.userData = { basePosition: sprite.position.clone(), oscillationSpeed: Math.random() * 0.4 + 0.4, velocity: new THREE.Vector3(0, 0, 0), lifetime: 0, maxLifetime: 15 + Math.random() * 15 }; // Longer lifetime range
+         sprite.userData = { basePosition: sprite.position.clone(), oscillationSpeed: Math.random() * 0.5 + 0.5, velocity: new THREE.Vector3(0, 0, 0), lifetime: 0, maxLifetime: 12 + Math.random() * 12 };
          glyphs.push(sprite); scene.add(sprite);
       }
 
@@ -857,25 +918,24 @@
       document.addEventListener("mousemove", onDocumentMouseMove, false);
     }
 
-    function animateThreeJS() {
-      if (!renderer || !scene || !camera) return; // Ensure core components exist
-      window.threeJsAnimationRequest = requestAnimationFrame(animateThreeJS); // Store request ID if needed
+    function animateThreeJS() { // Renamed in original
+        // Need null check for renderer in case init hasn't completed fully or failed
+      if (!renderer) return;
 
+      requestAnimationFrame(animateThreeJS); // Queue next frame
       const time = Date.now() * 0.001;
+       // Ensure loadingStartTime is a number before calculating elapsed time
       const elapsedTime = typeof loadingStartTime === 'number' ? (time - loadingStartTime) : 0;
-      if (elapsedTime <= 0) return;
 
-      // Smoother glyph fade-in
-      const glyphStartDelay = 3.8; const glyphFadeDuration = 2.0;
-      globalGlyphFade = (elapsedTime < glyphStartDelay) ? 0 : Math.min((elapsedTime - glyphStartDelay) / glyphFadeDuration, 1);
-      globalGlyphFade = globalGlyphFade * globalGlyphFade; // Ease-in curve
+       // Skip updates if not enough time has passed (or first frame after login)
+       if (elapsedTime <= 0) return;
 
-      // Smoother camera rotation lerp
-      corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.04;
-      corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.04;
+      const glyphStartDelay = 3.5; globalGlyphFade = (elapsedTime < glyphStartDelay) ? 0 : Math.min((elapsedTime - glyphStartDelay) / 1.5, 1);
 
-      // Wall animation logic (unchanged, uses easing function)
-      const wallAnimDuration = 2.0; const wallStartDelay = 0.6; // Start slightly sooner
+      corridor.rotation.y += (targetRotationY - corridor.rotation.y) * 0.05;
+      corridor.rotation.x += (targetRotationX - corridor.rotation.x) * 0.05;
+
+      const wallAnimDuration = 2.0; const wallStartDelay = 0.5;
       if (elapsedTime >= wallStartDelay && elapsedTime < wallStartDelay + wallAnimDuration) {
         const progress = (elapsedTime - wallStartDelay) / wallAnimDuration; const easeProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
         leftWallMesh.position.x = (-CORRIDOR_SIZE/2 - 500) + easeProgress * 500;
@@ -884,120 +944,70 @@
         leftWallMesh.position.x = -CORRIDOR_SIZE/2; rightWallMesh.position.x = CORRIDOR_SIZE/2;
       }
 
-      // Texture scrolling (using updated speeds)
       if(floorTexture) floorTexture.offset.y += SCROLL_SPEED_FLOOR;
       if(leftWallTexture) leftWallTexture.offset.y += SCROLL_SPEED_CODE;
       if(rightWallTexture) rightWallTexture.offset.y += SCROLL_SPEED_CODE;
-      if(ceilingTexture) ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.4; // Slower ceiling scroll
+      if(ceilingTexture) ceilingTexture.offset.y -= SCROLL_SPEED_FLOOR * 0.5;
 
-      // Plexus animation (smoother easing)
-      const plexusStartDelay = 2.8; const plexusAnimDuration = 1.8;
-      if (plexusGroup) {
+      const plexusStartDelay = 2.5; const plexusAnimDuration = 1.5;
+      if (plexusGroup) { // Check if plexus group exists
          if (elapsedTime < plexusStartDelay) { plexusGroup.scale.set(0, 0, 0); }
          else if (elapsedTime < plexusStartDelay + plexusAnimDuration) {
-            const s = (elapsedTime - plexusStartDelay) / plexusAnimDuration;
-            const easeS = s < 0.5 ? 4*s*s*s : 1 - Math.pow(-2*s+2, 3)/2; // Ease in-out cubic
-            plexusGroup.scale.set(easeS, easeS, easeS);
+            const s = (elapsedTime - plexusStartDelay) / plexusAnimDuration; const easeS = 0.5 - 0.5 * Math.cos(s * Math.PI); plexusGroup.scale.set(easeS, easeS, easeS);
          } else { plexusGroup.scale.set(1, 1, 1); }
-         if (plexusGroup.children.length > 0 && plexusGroup.children[0]?.userData?.nodes) { // Check nodes exist
-            updateScrollingPlexus(plexusGroup.children[0], time);
-         }
+         if (plexusGroup.children.length > 0) { updateScrollingPlexus(plexusGroup.children[0], time); }
       }
 
       updateGlyphs();
-      renderer.render(scene, camera);
+      renderer.render(scene, camera); // Render the scene
     }
 
-    // --- Helper functions for Three.js (Minor tweaks indicated) ---
-    // Updated plexus to accept color, node count, threshold
-    function createScrollingPlexus(lineColor = new THREE.Color(0x00ccff), nodeCount = 160, threshold = 435) {
-        const group = new THREE.Group(); const scrollSpeed = 0.8; // Slightly slower plexus scroll
-        const regionMinX = -1200, regionMaxX = 1200, regionMinY = -1150, regionMaxY = -750; const regionMinZ = -3200, regionMaxZ = 1300; // Slightly larger region
+    // --- Helper functions for Three.js (Keep unchanged from original refinement) ---
+    function createScrollingPlexus(){ /* ... unchanged ... */
+        const group = new THREE.Group(); const nodeCount = 160, threshold = 435, scrollSpeed = 1.0;
+        const regionMinX = -1100, regionMaxX = 1100, regionMinY = -1100, regionMaxY = -700; const regionMinZ = -3000, regionMaxZ = 1200;
         const regionWidth = regionMaxX - regionMinX, regionDepth = regionMaxZ - regionMinZ; const nodes = [];
-        for (let i = 0; i < nodeCount; i++) { const x = THREE.MathUtils.randFloat(regionMinX, regionMaxX); const y = THREE.MathUtils.randFloat(regionMinY, regionMaxY); const z = THREE.MathUtils.randFloat(regionMinZ, regionMaxZ); const v = new THREE.Vector3(x, y, z); v.userData = { phase: Math.random() * Math.PI * 2, amplitude: 15 + Math.random() * 15, scrollSpeed: scrollSpeed * (0.8 + Math.random() * 0.4) }; nodes.push(v); } // Vary scroll speed slightly
+        for (let i = 0; i < nodeCount; i++) { const x = THREE.MathUtils.randFloat(regionMinX, regionMaxX); const y = THREE.MathUtils.randFloat(regionMinY, regionMaxY); const z = THREE.MathUtils.randFloat(regionMinZ, regionMaxZ); const v = new THREE.Vector3(x, y, z); v.userData = { phase: Math.random() * Math.PI * 2, amplitude: 20 + Math.random() * 10, scrollSpeed }; nodes.push(v); }
         const geometry = new THREE.BufferGeometry(); geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3)); geometry.setAttribute('uv', new THREE.Float32BufferAttribute([], 2));
-        const material = new THREE.ShaderMaterial({ uniforms: { lineColor: { value: lineColor }, center: { value: new THREE.Vector2(0.5, 0.5) }, maxDist: { value: 0.8 } }, /* Updated maxDist for fade */ vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`, fragmentShader: `uniform vec3 lineColor; uniform vec2 center; uniform float maxDist; varying vec2 vUv; void main() { float d = distance(vUv, center); float alpha = smoothstep(maxDist, 0.0, d); /* Smoother fade */ gl_FragColor = vec4(lineColor, alpha * 0.5); /* Reduced opacity */ }`, transparent: true, depthTest: true, depthWrite: false, blending: THREE.AdditiveBlending /* Additive blending for glow */ });
-        const plexusLines = new THREE.LineSegments(geometry, material); plexusLines.frustumCulled = false; plexusLines.renderOrder = 1; plexusLines.userData = { nodes, regionMinX, regionMaxX, regionMinZ, regionMaxZ, regionWidth, regionDepth, threshold }; group.add(plexusLines); return group;
-    }
-    function updateScrollingPlexus(plexusLines, time) { /* Logic unchanged */
+        const material = new THREE.ShaderMaterial({ uniforms: { lineColor: { value: new THREE.Color(0x00ccff) }, center: { value: new THREE.Vector2(0.5, 0.5) }, maxDist: { value: 1.0 } }, vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`, fragmentShader: `uniform vec3 lineColor; uniform vec2 center; uniform float maxDist; varying vec2 vUv; void main() { float d = distance(vUv, center); float alpha = 1.0 - smoothstep(0.0, maxDist, d); gl_FragColor = vec4(lineColor, alpha * 0.6); }`, transparent: true, depthTest: true, depthWrite: false });
+        const plexusLines = new THREE.LineSegments(geometry, material); plexusLines.frustumCulled = false; plexusLines.renderOrder = 1; plexusLines.userData = { nodes, regionMinX, regionMaxX, regionMinZ, regionMaxZ, regionWidth, regionDepth, threshold }; group.add(plexusLines); return group; }
+    function updateScrollingPlexus(plexusLines, time) { /* ... unchanged ... */
         const geometry = plexusLines.geometry; const { nodes, regionMinX, regionMaxX, regionMinZ, regionMaxZ, regionWidth, regionDepth, threshold } = plexusLines.userData; const positions = []; const uvs = [];
-        for (let i = 0; i < nodes.length; i++) { const n = nodes[i]; n.y += Math.sin(time * 0.4 + n.userData.phase) * 0.25; n.z += n.userData.scrollSpeed; if (n.z > regionMaxZ + 200) n.z = regionMinZ - 50; }
+        for (let i = 0; i < nodes.length; i++) { const n = nodes[i]; n.y += Math.sin(time * 0.5 + n.userData.phase) * 0.2; n.z += n.userData.scrollSpeed; if (n.z > regionMaxZ + 200) n.z = regionMinZ - 50; }
         for (let i = 0; i < nodes.length; i++) { for (let j = i + 1; j < nodes.length; j++) { const dist = nodes[i].distanceTo(nodes[j]); if (dist < threshold) { positions.push(nodes[i].x, nodes[i].y, nodes[i].z); positions.push(nodes[j].x, nodes[j].y, nodes[j].z); const u1 = (nodes[i].x - regionMinX) / regionWidth; const v1 = (nodes[i].z - regionMinZ) / regionDepth; const u2 = (nodes[j].x - regionMinX) / regionWidth; const v2 = (nodes[j].z - regionMinZ) / regionDepth; uvs.push(u1, v1); uvs.push(u2, v2); } } }
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); geometry.attributes.position.needsUpdate = true; geometry.attributes.uv.needsUpdate = true; geometry.computeBoundingSphere();
-    }
-    function createCodeTexture(size) { /* Logic unchanged */
-        const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size; const ctx = canvas.getContext("2d"); ctx.fillStyle = "#050a14"; ctx.fillRect(0, 0, size, size); ctx.fillStyle = "rgba(0, 229, 255, 0.3)"; ctx.font = "10px monospace"; const codeChars = ["0","1","∑","∆","≈","≠","Ω","π","Σ","Δ","¤","¥","µ","∂","ƒ","Ξ","Ψ","Φ","Λ","Ω", "|", "/", "\\", "<", ">", "{", "}"]; const columns = 40, rows = 50; const colWidth = size / columns, rowHeight = size / rows; for (let c = 0; c < columns; c++) { for (let r = 0; r < rows; r++) { const char = codeChars[Math.floor(Math.random() * codeChars.length)]; let x = c * colWidth + colWidth * 0.1; let y = r * rowHeight + rowHeight * 0.8; ctx.globalAlpha = 0.4 + Math.random() * 0.6; ctx.fillText(char, x, y); } } return new THREE.CanvasTexture(canvas);
-    }
-    function createCircuitTexture(size) { /* Logic unchanged */
-        const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size; const ctx = canvas.getContext("2d"); ctx.fillStyle = "#050a14"; ctx.fillRect(0, 0, size, size); const lineCount = 30; for (let i = 0; i < lineCount; i++) { ctx.strokeStyle = "rgba(0, 229, 255, 0.25)"; ctx.lineWidth = Math.random() * 1.5 + 0.5; ctx.beginPath(); let x1 = Math.random() * size, y1 = Math.random() * size; let x2 = x1 + (Math.random() - 0.5) * 120, y2 = y1 + (Math.random() - 0.5) * 120; ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); } const arcCount = 20; for (let i = 0; i < arcCount; i++) { ctx.strokeStyle = "rgba(0, 229, 255, 0.2)"; ctx.lineWidth = Math.random() * 1.5 + 0.5; ctx.beginPath(); let cx = Math.random() * size, cy = Math.random() * size; let r = Math.random() * 30 + 8; ctx.arc(cx, cy, r, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2); ctx.stroke(); } const textCount = 12; ctx.fillStyle = "rgba(0, 229, 255, 0.2)"; ctx.font = "12px monospace"; for (let i = 0; i < textCount; i++) { let tx = Math.random() * size, ty = Math.random() * size; let hexString = Math.floor(Math.random() * 0xfff).toString(16).toUpperCase(); ctx.fillText(hexString, tx, ty); } return new THREE.CanvasTexture(canvas);
-    }
-    function onWindowResize() { /* Logic unchanged */
-        if(camera && renderer) { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
-    }
-    function onDocumentMouseMove(e) { /* Logic unchanged */
-        mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1; const maxRotation = 0.06; targetRotationY = mouse.x * maxRotation; targetRotationX = mouse.y * maxRotation;
-    }
-    function updateGlyphs() { /* Logic unchanged, uses updated parameters */
-        glyphs.forEach(sprite => { if (!sprite?.userData) return;
-            sprite.userData.lifetime += 0.016; const lifetimeRatio = sprite.userData.lifetime / sprite.userData.maxLifetime;
-            // Fade in quickly, fade out slowly
-            const fadeInDuration = 0.1; const fadeOutStart = 0.7;
-            let opacityFactor = 1.0;
-            if (lifetimeRatio < fadeInDuration) { opacityFactor = lifetimeRatio / fadeInDuration; }
-            else if (lifetimeRatio > fadeOutStart) { opacityFactor = 1.0 - (lifetimeRatio - fadeOutStart) / (1.0 - fadeOutStart); }
-            const currentOpacity = Math.max(0, opacityFactor) * globalGlyphFade * globalGlyphFade; // Apply eased global fade
-            sprite.material.opacity = currentOpacity;
-
-             if (currentOpacity < 0.01 || lifetimeRatio >= 1.0) {
-                sprite.userData.lifetime = 0; sprite.userData.maxLifetime = 15 + Math.random() * 15;
-                if (Math.random() < 0.5) spawnGlyphOnWall(sprite); else sprite.position.set((Math.random() - 0.5) * CORRIDOR_SIZE, Math.random() * 1950 - 700, -Math.random() * CORRIDOR_SIZE * 1.2); // Spawn further away sometimes
-                 sprite.userData.basePosition.copy(sprite.position); sprite.userData.velocity.set(0, 0, 0);
-                 sprite.material.opacity = 0; // Start invisible for fade-in
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2)); geometry.attributes.position.needsUpdate = true; geometry.attributes.uv.needsUpdate = true; geometry.computeBoundingSphere(); }
+    function createCodeTexture(size) { /* ... unchanged ... */
+        const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size; const ctx = canvas.getContext("2d"); ctx.fillStyle = "#0d1b2a"; ctx.fillRect(0, 0, size, size); ctx.fillStyle = "rgba(0, 204, 255, 0.4)"; ctx.font = "10px monospace"; const codeChars = ["0","1","∑","∆","≈","≠","Ω","π","Σ","Δ","¤","¥","µ","∂","ƒ","Ξ","Ψ","Φ","Λ","Ω"]; const columns = 40, rows = 50; const colWidth = size / columns, rowHeight = size / rows; for (let c = 0; c < columns; c++) { for (let r = 0; r < rows; r++) { const char = codeChars[Math.floor(Math.random() * codeChars.length)]; let x = c * colWidth + colWidth * 0.1; let y = r * rowHeight + rowHeight * 0.8; ctx.fillText(char, x, y); } } return new THREE.CanvasTexture(canvas); }
+    function createCircuitTexture(size) { /* ... unchanged ... */
+        const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size; const ctx = canvas.getContext("2d"); ctx.fillStyle = "#0d1b2a"; ctx.fillRect(0, 0, size, size); const lineCount = 25; for (let i = 0; i < lineCount; i++) { ctx.strokeStyle = "rgba(0, 204, 255, 0.3)"; ctx.lineWidth = Math.random() * 2 + 1; ctx.beginPath(); let x1 = Math.random() * size, y1 = Math.random() * size; let x2 = x1 + (Math.random() - 0.5) * 150, y2 = y1 + (Math.random() - 0.5) * 150; ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); } const arcCount = 15; for (let i = 0; i < arcCount; i++) { ctx.strokeStyle = "rgba(0, 204, 255, 0.3)"; ctx.lineWidth = Math.random() * 2 + 1; ctx.beginPath(); let cx = Math.random() * size, cy = Math.random() * size; let r = Math.random() * 40 + 10; ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); } const textCount = 10; ctx.fillStyle = "rgba(0, 204, 255, 0.25)"; ctx.font = "14px monospace"; for (let i = 0; i < textCount; i++) { let tx = Math.random() * size, ty = Math.random() * size; let hexString = Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase(); ctx.fillText(hexString, tx, ty); } return new THREE.CanvasTexture(canvas); }
+    function onWindowResize() { /* ... unchanged ... */
+        if(camera && renderer) { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); } }
+    function onDocumentMouseMove(e) { /* ... unchanged ... */
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1; const maxRotation = 0.08; targetRotationY = mouse.x * maxRotation; targetRotationX = mouse.y * maxRotation; }
+    function updateGlyphs() { /* ... unchanged ... */
+        glyphs.forEach(sprite => { if (!sprite?.userData) return; // Add safety check
+            sprite.userData.lifetime += 0.016; const fade = 1 - (sprite.userData.lifetime / sprite.userData.maxLifetime); const currentOpacity = Math.max(fade, 0) * globalGlyphFade; sprite.material.opacity = currentOpacity; // Use global fade factor
+             if (currentOpacity < 0.01 || fade <= 0.05) { // Respawn check, more robust
+                sprite.userData.lifetime = 0; sprite.userData.maxLifetime = 12 + Math.random() * 12;
+                if (Math.random() < 0.5) spawnGlyphOnWall(sprite); else sprite.position.set((Math.random() - 0.5) * CORRIDOR_SIZE, Math.random() * 1950 - 700, -Math.random() * CORRIDOR_SIZE);
+                 sprite.userData.basePosition.copy(sprite.position); sprite.userData.velocity.set(0, 0, 0); sprite.material.opacity = 1.0 * globalGlyphFade; // Reset opacity considering global fade
             }
-            const t = Date.now() * 0.001 * sprite.userData.oscillationSpeed; sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 18; sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 18;
-             if(camera){
+            const t = Date.now() * 0.001 * sprite.userData.oscillationSpeed; sprite.position.x = sprite.userData.basePosition.x + Math.sin(t) * 15; sprite.position.y = sprite.userData.basePosition.y + Math.cos(t) * 15;
+             if(camera){ // Check if camera exists before projecting
                  const pos = sprite.position.clone(); pos.project(camera);
                  const glyphScreenX = (pos.x * 0.5 + 0.5) * window.innerWidth; const glyphScreenY = (-pos.y * 0.5 + 0.5) * window.innerHeight;
                  const mouseScreenX = (mouse.x + 1) * 0.5 * window.innerWidth; const mouseScreenY = (-mouse.y + 1) * 0.5 * window.innerHeight; const dist = Math.hypot(glyphScreenX - mouseScreenX, glyphScreenY - mouseScreenY);
-                 if (dist < repulsionDistance && currentOpacity > 0.1) { // Only repulse if visible
-                     const dx = glyphScreenX - mouseScreenX; const dy = glyphScreenY - mouseScreenY; const angle = Math.atan2(dy, dx);
-                     const forceFactor = (repulsionDistance - dist) / repulsionDistance; // Stronger push when closer
-                     const pushX = Math.cos(angle) * repulsionForce * forceFactor; const pushY = Math.sin(angle) * repulsionForce * forceFactor; sprite.userData.velocity.x += pushX; sprite.userData.velocity.y += pushY;
-                 }
+                 if (dist < repulsionDistance) { const dx = glyphScreenX - mouseScreenX; const dy = glyphScreenY - mouseScreenY; const angle = Math.atan2(dy, dx); const pushX = Math.cos(angle) * repulsionForce; const pushY = Math.sin(angle) * repulsionForce; sprite.userData.velocity.x += pushX; sprite.userData.velocity.y += pushY; }
                  sprite.userData.velocity.multiplyScalar(friction); sprite.position.x += sprite.userData.velocity.x; sprite.position.y += sprite.userData.velocity.y;
-                 // Clamp position to prevent excessive drift (optional)
-                 // sprite.position.x = THREE.MathUtils.clamp(sprite.position.x, sprite.userData.basePosition.x - 100, sprite.userData.basePosition.x + 100);
-                 // sprite.position.y = THREE.MathUtils.clamp(sprite.position.y, sprite.userData.basePosition.y - 100, sprite.userData.basePosition.y + 100);
-
-                 const d = camera.position.distanceTo(sprite.position); const minDist = 400, maxDist = 2200; const scaleClose = 350, scaleFar = 180; const clampDist = THREE.MathUtils.clamp(d, minDist, maxDist); const alpha = (clampDist - minDist) / (maxDist - minDist); const finalScale = scaleClose * (1 - alpha) + scaleFar * alpha; sprite.scale.set(finalScale, finalScale, 1);
+                 const d = camera.position.distanceTo(sprite.position); const minDist = 500, maxDist = 2000; const scaleClose = 400, scaleFar = 200; const clampDist = THREE.MathUtils.clamp(d, minDist, maxDist); const alpha = (clampDist - minDist) / (maxDist - minDist); const finalScale = scaleClose * (1 - alpha) + scaleFar * alpha; sprite.scale.set(finalScale, finalScale, 1);
             }
         });
     }
-    function spawnGlyphOnWall(sprite) { /* Logic unchanged */
-        const wallTypes = [0, 1, 3]; const wallType = wallTypes[Math.floor(Math.random() * wallTypes.length)]; const offset = 60; let x, y; if (wallType === 0) { x = -CORRIDOR_SIZE / 2 + offset; y = Math.random() * 1950 - 700; } else if (wallType === 1) { x = CORRIDOR_SIZE / 2 - offset; y = Math.random() * 1950 - 700; } else { y = CORRIDOR_SIZE / 2 - offset; x = (Math.random() - 0.5) * CORRIDOR_SIZE; } const z = -Math.random() * CORRIDOR_SIZE; sprite.position.set(x, y, z);
-    }
-    // Updated to accept color
-    function createGlyphSprite(letter, color = 'rgba(0,204,255,1.0)') {
-        const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128; const ctx = canvas.getContext("2d"); ctx.clearRect(0, 0, 128, 128);
-        ctx.font = "bold 90px Orbitron"; // Use Orbitron, slightly smaller
-        ctx.fillStyle = color; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        // Add subtle glow directly on canvas
-        ctx.shadowColor = 'rgba(0, 229, 255, 0.7)'; ctx.shadowBlur = 10;
-        ctx.fillText(letter, 64, 68); // Adjust vertical position slightly
-        const texture = new THREE.CanvasTexture(canvas); const material = new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.05, sizeAttenuation: true, fog: true }); const sprite = new THREE.Sprite(material); sprite.renderOrder = 2; sprite.scale.set(100, 100, 1); return sprite;
-    }
+    function spawnGlyphOnWall(sprite) { /* ... unchanged ... */
+        const wallTypes = [0, 1, 3]; const wallType = wallTypes[Math.floor(Math.random() * wallTypes.length)]; const offset = 50; let x, y; if (wallType === 0) { x = -CORRIDOR_SIZE / 2 + offset; y = Math.random() * 1950 - 700; } else if (wallType === 1) { x = CORRIDOR_SIZE / 2 - offset; y = Math.random() * 1950 - 700; } else { y = CORRIDOR_SIZE / 2 - offset; x = (Math.random() - 0.5) * CORRIDOR_SIZE; } const z = -Math.random() * CORRIDOR_SIZE; sprite.position.set(x, y, z); }
+    function createGlyphSprite(letter) { /* ... unchanged ... */
+        const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128; const ctx = canvas.getContext("2d"); ctx.clearRect(0, 0, 128, 128); ctx.font = "100px Arial"; ctx.fillStyle = "rgba(0,204,255,1.0)"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(letter, 64, 64); const texture = new THREE.CanvasTexture(canvas); const material = new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.1, sizeAttenuation: true }); const sprite = new THREE.Sprite(material); sprite.renderOrder = 2; sprite.scale.set(120, 120, 1); return sprite; }
 
-    // Add flags to prevent multiple initializations/animations if login is somehow triggered multiple times
-    window.threeJsInitialized = false;
-    window.threeJsAnimating = false;
-
-    // Cleanup function (optional but good practice)
-    window.addEventListener('beforeunload', () => {
-        if (window.threeJsAnimating) {
-            cancelAnimationFrame(window.threeJsAnimationRequest);
-        }
-        // Could also dispose of Three.js objects here if needed
-    });
 
   </script>
 </body>
