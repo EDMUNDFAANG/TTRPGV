@@ -1,1 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Simple Gacha Demo</title>
+</head>
+<body>
+  <h1>🎲 Simple Gacha</h1>
+  <button id="roll">Roll</button>
+  <div id="result">Press “Roll” to pull an item.</div>
+
+  <script>
+    // Basic item pool
+    const items = [
+      "Wooden Sword",
+      "Basic Potion",
+      "Cloth Armor"
+    ];
+
+    document.getElementById("roll").addEventListener("click", () => {
+      const idx = Math.floor(Math.random() * items.length);
+      const item = items[idx];
+      document.getElementById("result").textContent = `→ You got: ${item}`;
+    });
+  </script>
+</body>
+</html>
 
